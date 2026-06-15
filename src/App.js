@@ -720,3 +720,4 @@ function SLabel({children}){
 function Empty(){
   return <div style={{textAlign:"center",color:"#8aa3c0",padding:"56px 0",fontSize:15}}>Aún no hay registros.<br/><span style={{fontSize:13}}>Completá tu primer chequeo nocturno.</span></div>;
 }
+/* cache bust Mon Jun 15 15:35:12 UTC 2026 */
