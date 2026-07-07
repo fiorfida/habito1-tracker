@@ -264,13 +264,14 @@ export default function App() {
 
   // ── Computed ──
   const today       = todayBsAs();
-  const allDates    = Object.keys(registros).sort();
+  const allDates    = [...new Set([...Object.keys(registros), ...Object.keys(mananaLog)])].sort();
   const firstDate   = allDates[0]||today;
   const allDays     = dateRange(firstDate, today);
   const tracked     = allDays.filter(d=>registros[d]);
   const missed      = allDays.filter(d=>!registros[d]&&d!==today);
   const totalDays   = allDays.length;
   const consistency = totalDays>0?Math.round((tracked.length/totalDays)*100):0;
+  const mananasHechas = allDays.filter(d=>mananaLog[d]?.visto).length;
   const mananHoy    = !!(mananaLog[today]);
   const nocheHoy    = !!(registros[today]);
   const wkStart     = getWeekStart(today);
@@ -408,12 +409,9 @@ export default function App() {
         {/* ── MAÑANA ── */}
         {view==="manana" && (
           <div>
-            <div style={{...card, background:mananHoy?C.yesBg:C.warnBg, border:`1px solid ${mananHoy?C.yes:C.warn}`, display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
-              <div>
-                <div style={{fontSize:13,fontWeight:600,color:mananHoy?C.yes:C.warn}}>{mananHoy?"✓ Revisión matutina completada":"⏰ Revisión matutina pendiente"}</div>
-                <div style={{fontSize:12,color:C.textMuted,marginTop:2}}>{mananHoy?"Ya leíste tu misión, visión y roles hoy.":"Leé tu misión, visión y roles antes de arrancar el día."}</div>
-              </div>
-              {!mananHoy && <button onClick={handleMarcarManana} style={{flexShrink:0,marginLeft:12,padding:"8px 14px",borderRadius:8,border:"none",cursor:"pointer",background:C.navy,color:C.white,fontSize:12,fontFamily:"inherit",fontWeight:600}}>Marcar ✓</button>}
+            <div style={{...card, background:mananHoy?C.yesBg:C.warnBg, border:`1px solid ${mananHoy?C.yes:C.warn}`, marginBottom:20}}>
+              <div style={{fontSize:13,fontWeight:600,color:mananHoy?C.yes:C.warn}}>{mananHoy?"✓ Revisión matutina completada":"⏰ Revisión matutina pendiente"}</div>
+              <div style={{fontSize:12,color:C.textMuted,marginTop:2}}>{mananHoy?"Ya leíste tu misión, visión y roles hoy.":"Leé tu misión, visión y roles, y confirmá al final del recorrido."}</div>
             </div>
 
             <div style={{...card,background:C.celestePale,border:`1px solid ${C.celeste}`,marginBottom:20}}>
@@ -507,6 +505,7 @@ export default function App() {
                 <div>
                   <div style={{fontSize:11,letterSpacing:2,color:C.textMuted,textTransform:"uppercase"}}>Consistencia</div>
                   <div style={{fontSize:13,color:C.textSecond,marginTop:2}}>{tracked.length} de {totalDays} días registrados</div>
+                  <div style={{fontSize:13,color:C.textSecond,marginTop:2}}>{mananasHechas} de {totalDays} mañanas completadas</div>
                 </div>
                 <div style={{fontSize:28,fontWeight:700,color:scoreColor(consistency)}}>{consistency}%</div>
               </div>
@@ -514,6 +513,7 @@ export default function App() {
             {allDays.length===0?<Empty/>:(
               [...allDays].reverse().map(d=>{
                 const r=registros[d];
+                const mHecha=!!(mananaLog[d]?.visto);
                 const isMissed=!r&&d!==today;
                 const h1Score=r?[r.p1,r.p2,r.p3].filter(Boolean).length:0;
                 return (
@@ -523,12 +523,15 @@ export default function App() {
                         <span style={{fontSize:14,fontWeight:600,color:C.textPrimary}}>{formatDate(d)}</span>
                         <span style={{fontSize:12,color:C.textMuted,marginLeft:8}}>{dayOfWeek(d)}</span>
                       </div>
-                      {r?(
-                        <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                          <span style={{fontSize:12,fontWeight:700,padding:"3px 10px",borderRadius:20,background:C.celestePale,color:C.celeste}}>H1: {h1Score}/3</span>
-                          {r.p4!==undefined&&<span style={{fontSize:12,fontWeight:700,padding:"3px 10px",borderRadius:20,background:r.p4?C.yesBg:C.noBg,color:r.p4?C.yes:C.no}}>H2: {r.p4?"SÍ":"NO"}</span>}
-                        </div>
-                      ):<span style={{fontSize:12,color:C.textMuted,fontStyle:"italic"}}>sin registro</span>}
+                      <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
+                        {mHecha&&<span style={{fontSize:12,fontWeight:700,padding:"3px 10px",borderRadius:20,background:C.yesBg,color:C.yes}}>☀ Mañana</span>}
+                        {r?(
+                          <>
+                            <span style={{fontSize:12,fontWeight:700,padding:"3px 10px",borderRadius:20,background:C.celestePale,color:C.celeste}}>H1: {h1Score}/3</span>
+                            {r.p4!==undefined&&<span style={{fontSize:12,fontWeight:700,padding:"3px 10px",borderRadius:20,background:r.p4?C.yesBg:C.noBg,color:r.p4?C.yes:C.no}}>H2: {r.p4?"SÍ":"NO"}</span>}
+                          </>
+                        ):<span style={{fontSize:12,color:C.textMuted,fontStyle:"italic"}}>sin registro noche</span>}
+                      </div>
                     </div>
                     {r&&(
                       <>
@@ -626,18 +629,19 @@ export default function App() {
         {/* ── RESUMEN ── */}
         {view==="resumen"&&(
           <div>
-            {tracked.length===0?<Empty/>:(
+            {tracked.length===0&&mananasHechas===0?<Empty/>:(
               <>
                 <div style={card}>
                   <SLabel>Global</SLabel>
-                  <div style={{display:"flex",gap:0}}>
+                  <div style={{display:"flex",gap:0,flexWrap:"wrap"}}>
                     {[
                       {label:"Días registrados",val:tracked.length},
+                      {label:"Mañanas completadas",val:mananasHechas},
                       {label:"Consistencia",    val:consistency+"%"},
                       {label:"Días perfectos",  val:tracked.filter(d=>registros[d].p1&&registros[d].p2&&registros[d].p3&&registros[d].p4).length},
                       {label:"Días perdidos",   val:missed.length},
-                    ].map((s,i)=>(
-                      <div key={s.label} style={{flex:1,textAlign:"center",padding:"0 4px",borderRight:i<3?`1px solid ${C.border}`:"none"}}>
+                    ].map((s,i,arr)=>(
+                      <div key={s.label} style={{flex:1,textAlign:"center",padding:"0 4px",borderRight:i<arr.length-1?`1px solid ${C.border}`:"none"}}>
                         <div style={{fontSize:24,fontWeight:700,color:C.navy}}>{s.val}</div>
                         <div style={{fontSize:11,color:C.textMuted,marginTop:3,lineHeight:1.3}}>{s.label}</div>
                       </div>
