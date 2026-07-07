@@ -200,7 +200,7 @@ async function fbDelete(uid, colName, docId) {
 // ─── App ──────────────────────────────────────────────────────────────
 export default function App() {
   const [user, setUser]       = useState(undefined); // undefined=loading, null=logged out
-  const [view, setView]       = useState("manana");
+  const [view, setView]       = useState("home");
   const [syncing, setSyncing] = useState(false);
 
   const [registros,   setRegistros]   = useState({});
@@ -437,10 +437,13 @@ export default function App() {
     return Math.round((yes/tracked.length)*100);
   });
 
+  const periodicaPendiente = semanaEstado!=="completada"||trimEstado!=="completada"||anualEstado!=="completada";
+
   const badges = {
+    home:      (!mananHoy||!nocheHoy||periodicaPendiente)?1:0,
     manana:    mananHoy?0:1,
     noche:     nocheHoy?0:1,
-    periodica: (semanaEstado!=="completada"||trimEstado!=="completada"||anualEstado!=="completada")?1:0,
+    periodica: periodicaPendiente?1:0,
   };
 
   // ── Loading state ──
@@ -520,11 +523,12 @@ export default function App() {
         {/* Nav */}
         <div style={{maxWidth:640,margin:"0 auto",display:"flex",borderTop:"1px solid rgba(255,255,255,0.1)",overflowX:"auto"}}>
           {[
+            {id:"home",    label:"Home",     badge:badges.home},
             {id:"manana",  label:"Mañana",   badge:badges.manana},
             {id:"noche",   label:"Noche",    badge:badges.noche},
-            {id:"historial",label:"Historial",badge:0},
             {id:"periodica",label:"Periódica",badge:badges.periodica},
             {id:"resumen", label:"Resumen",  badge:0},
+            {id:"historial",label:"Historial",badge:0},
           ].map(tab => (
             <button key={tab.id} onClick={()=>setView(tab.id)} style={{
               flex:"1 0 auto",padding:"10px 8px",border:"none",cursor:"pointer",
@@ -542,6 +546,30 @@ export default function App() {
       </div>
 
       <div style={{maxWidth:640,margin:"0 auto",padding:"20px 16px 80px"}}>
+
+        {/* ── HOME ── */}
+        {view==="home" && (
+          <div>
+            <div style={{fontSize:11,letterSpacing:2,color:C.textMuted,textTransform:"uppercase",marginBottom:14}}>{dayOfWeek(today)} {formatDate(today)}</div>
+
+            <HomeRow icon="☀️" label="Mañana" estado={mananHoy?"completada":"pendiente"}
+              detalle={mananHoy?"Misión, visión y roles leídos hoy.":"Todavía no la hiciste hoy."}
+              onClick={()=>setView("manana")}/>
+            <HomeRow icon="🌙" label="Noche" estado={nocheHoy?"completada":"pendiente"}
+              detalle={nocheHoy?"Registro del día guardado.":"Falta tu reflexión nocturna."}
+              onClick={()=>setView("noche")}/>
+
+            <div style={{marginTop:24}}>
+              <SLabel>Periódica</SLabel>
+              <HomeRow icon="📋" label="Semanal" estado={semanaEstado}
+                onClick={()=>{setView("periodica");setPeriodicaSub("semanal");}}/>
+              <HomeRow icon="⭐" label="Trimestral" estado={trimEstado}
+                onClick={()=>{setView("periodica");setPeriodicaSub("trimestral");}}/>
+              <HomeRow icon="⭐" label="Anual" estado={anualEstado}
+                onClick={()=>{setView("periodica");setPeriodicaSub("anual");}}/>
+            </div>
+          </div>
+        )}
 
         {/* ── MAÑANA ── */}
         {view==="manana" && (
@@ -994,6 +1022,29 @@ function EstadoBanner({estado, tituloPendiente, tituloVencida, tituloCompletada,
       <div style={{fontSize:13,fontWeight:600,color:c.text}}>{titulo}</div>
       {subtitulo && <div style={{fontSize:12,color:"#8aa3c0",marginTop:2}}>{subtitulo}</div>}
     </div>
+  );
+}
+function HomeRow({icon, label, estado, detalle, onClick}){
+  const colores = {
+    pendiente:  {bg:C.warnBg, text:C.warn, texto:"Pendiente"},
+    vencida:    {bg:C.noBg,   text:C.no,   texto:"Vencida"},
+    completada: {bg:C.yesBg,  text:C.yes,  texto:"✓ Listo"},
+  };
+  const c = colores[estado];
+  return (
+    <button onClick={onClick} style={{
+      ...card, width:"100%", textAlign:"left", cursor:"pointer", fontFamily:"inherit",
+      display:"flex", alignItems:"center", justifyContent:"space-between", gap:12,
+    }}>
+      <div style={{display:"flex",alignItems:"center",gap:12,minWidth:0}}>
+        <div style={{fontSize:20,flexShrink:0}}>{icon}</div>
+        <div style={{minWidth:0}}>
+          <div style={{fontSize:14,fontWeight:600,color:"#0d1f3c"}}>{label}</div>
+          {detalle && <div style={{fontSize:12,color:"#8aa3c0",marginTop:2}}>{detalle}</div>}
+        </div>
+      </div>
+      <span style={{fontSize:12,fontWeight:700,padding:"4px 12px",borderRadius:20,background:c.bg,color:c.text,flexShrink:0}}>{c.texto}</span>
+    </button>
   );
 }
 function Empty(){
