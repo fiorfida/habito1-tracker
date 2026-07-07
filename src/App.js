@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { db, auth, loginWithGoogle, logout, onAuthChange } from "./firebase";
 import {
-  doc, getDoc, setDoc, collection, getDocs
+  doc, getDoc, setDoc, deleteDoc, collection, getDocs
 } from "firebase/firestore";
 
 // ─── Timezone helper ───────────────────────────────────────────────────
@@ -10,9 +10,11 @@ function todayBsAs() {
 }
 
 // ─── Storage keys (local fallback) ─────────────────────────────────────
-const KEY_NOCHE  = "habito1_registros";
-const KEY_MANANA = "habito1_manana";
-const KEY_SEMANA = "habito1_semana";
+const KEY_NOCHE      = "habito1_registros";
+const KEY_MANANA     = "habito1_manana";
+const KEY_SEMANA     = "habito1_semana";
+const KEY_TRIMESTRE  = "habito1_trimestre";
+const KEY_ANUAL      = "habito1_anual";
 
 // ─── Racing Club palette ───────────────────────────────────────────────
 const C = {
@@ -87,6 +89,19 @@ const PREGUNTAS_SEMANA = [
   { id:"s3", pregunta:"¿Qué quiero hacer diferente la semana que viene?",                   placeholder:"Ej: Bloquear el miércoles para avanzar con Riglos." },
 ];
 
+const PREGUNTAS_TRIMESTRE = [
+  { id:"t1", pregunta:"¿Qué rol descuidé más este trimestre, y qué voy a ajustar para el próximo?",                              placeholder:"Ej: Facundito — poca conexión real con Flo por el ritmo de trabajo." },
+  { id:"t2", pregunta:"Repasando mi misión y visión: ¿siguen representando quién quiero ser, o hay algo que necesito actualizar?", placeholder:"Ej: Siguen vigentes, pero quiero sumar foco en..." },
+  { id:"t3", pregunta:"De las cuatro dimensiones de \"Afilar la sierra\" (cuerpo, mente, vínculos, espíritu), ¿cuál quedó más floja este trimestre?", placeholder:"Ej: Cuerpo — dejé de entrenar en las últimas semanas." },
+];
+
+const PREGUNTAS_ANUAL = [
+  { id:"a1", pregunta:"Mirando el año que termina, ¿qué decisión o hábito tuvo más impacto positivo en mi vida?", placeholder:"Ej: Empezar a entrenar temprano cambió mi energía todo el año." },
+  { id:"a2", pregunta:"¿Qué rol o vínculo quedó más descuidado durante el año, y qué voy a cambiar?",             placeholder:"Ej: Amigos — bajé mucho la frecuencia de encuentros con el grupo." },
+  { id:"a3", pregunta:"¿Mi misión, visión y roles siguen vigentes, o hay algo que quiero reescribir para este nuevo año?", placeholder:"Ej: Siguen firmes, ajusto el rol de Emprendedor con foco en Riglos." },
+  { id:"a4", pregunta:"¿Cuál es la piedra grande — lo más importante — para este año que arranca?",               placeholder:"Ej: Consolidar la libertad financiera con el proyecto Riglos." },
+];
+
 // ─── Helpers ──────────────────────────────────────────────────────────
 function formatDate(ds) {
   const [y,m,d] = ds.split("-"); return `${d}/${m}/${y}`;
@@ -97,8 +112,13 @@ function dayOfWeek(ds) {
 }
 function getWeekStart(ds) {
   const d = new Date(ds+"T12:00:00");
-  const day = d.getDay()||7; d.setDate(d.getDate()-day+1);
+  d.setDate(d.getDate()-d.getDay());
   return d.toISOString().slice(0,10);
+}
+function relevantWeekStart(ds) {
+  const dow  = new Date(ds+"T12:00:00").getDay();
+  const diff = (dow-6+7)%7;
+  return getWeekStart(addDays(ds,-diff));
 }
 function addDays(ds,n) {
   const d = new Date(ds+"T12:00:00"); d.setDate(d.getDate()+n);
@@ -115,9 +135,39 @@ function dotColor(reg){
   const s=[reg.p1,reg.p2,reg.p3].filter(Boolean).length;
   return s===3?C.perfect:s===2?C.good:s===1?C.mid:C.bad;
 }
-function isTrimestralDue(){
-  const m=parseInt(todayBsAs().split("-")[1]);
-  return m%3===0;
+function trimestralStatus(ds){
+  const [yStr,mStr,dStr] = ds.split("-");
+  const y=parseInt(yStr,10), m=parseInt(mStr,10), day=parseInt(dStr,10);
+  const candidatos = [{quarter:1,y,m:4},{quarter:2,y,m:7},{quarter:3,y,m:10}];
+  let relevante = null;
+  candidatos.forEach(c=>{
+    const inicio = `${c.y}-${String(c.m).padStart(2,"0")}-01`;
+    if (ds>=inicio) relevante = c;
+  });
+  if (!relevante) relevante = {quarter:3,y:y-1,m:10};
+  const ventanaAbierta = (m===relevante.m && y===relevante.y && day<=7);
+  return { key:`${relevante.y}-Q${relevante.quarter}`, quarter:relevante.quarter, quarterYear:relevante.y, ventanaAbierta };
+}
+function anualStatus(ds){
+  const [yStr,mStr,dStr] = ds.split("-");
+  const y=parseInt(yStr,10), m=parseInt(mStr,10), day=parseInt(dStr,10);
+  const reviewedYear = y-1;
+  const ventanaAbierta = (m===1 && day<=7);
+  return { key:String(reviewedYear), reviewedYear, ventanaAbierta };
+}
+function migrarSemanaLog(log){
+  const migrated = {}; const cambios = [];
+  Object.entries(log).forEach(([key,val])=>{
+    const dow = new Date(key+"T12:00:00").getDay();
+    if (dow===1) { // clave vieja: lunes de la semana lunes-domingo
+      const newKey = addDays(key,-1);
+      migrated[newKey] = val;
+      cambios.push({antes:key, despues:newKey});
+    } else {
+      migrated[key] = val;
+    }
+  });
+  return { migrated, cambios };
 }
 function fraseDelDia(){
   const epoca = new Date("2026-01-01T12:00:00");
@@ -141,6 +191,11 @@ async function fbSet(uid, colName, docId, data) {
     await setDoc(doc(db, "users", uid, colName, docId), data);
   } catch(e) { console.error("fbSet error:", e); }
 }
+async function fbDelete(uid, colName, docId) {
+  try {
+    await deleteDoc(doc(db, "users", uid, colName, docId));
+  } catch(e) { console.error("fbDelete error:", e); }
+}
 
 // ─── App ──────────────────────────────────────────────────────────────
 export default function App() {
@@ -148,9 +203,11 @@ export default function App() {
   const [view, setView]       = useState("manana");
   const [syncing, setSyncing] = useState(false);
 
-  const [registros,  setRegistros]  = useState({});
-  const [mananaLog,  setMananaLog]  = useState({});
-  const [semanaLog,  setSemanaLog]  = useState({});
+  const [registros,   setRegistros]   = useState({});
+  const [mananaLog,   setMananaLog]   = useState({});
+  const [semanaLog,   setSemanaLog]   = useState({});
+  const [trimestreLog,setTrimestreLog]= useState({});
+  const [anualLog,    setAnualLog]    = useState({});
 
   const [form, setForm] = useState({
     fecha:todayBsAs(), p1:null,p1_nota:"",p2:null,p2_nota:"",p3:null,p3_nota:"",p4:null,p4_nota:"",
@@ -158,6 +215,11 @@ export default function App() {
   const [savedNoche,  setSavedNoche]  = useState(false);
   const [semanaForm,  setSemanaForm]  = useState({s1:"",s2:"",s3:""});
   const [savedSemana, setSavedSemana] = useState(false);
+  const [trimestreForm,  setTrimestreForm]  = useState({t1:"",t2:"",t3:""});
+  const [savedTrimestre, setSavedTrimestre] = useState(false);
+  const [anualForm,      setAnualForm]      = useState({a1:"",a2:"",a3:"",a4:""});
+  const [savedAnual,     setSavedAnual]     = useState(false);
+  const [periodicaSub,   setPeriodicaSub]   = useState("semanal");
 
   // ── Auth listener ──
   useEffect(() => {
@@ -168,14 +230,26 @@ export default function App() {
   // ── Load data when user logs in ──
   const loadFromFirebase = useCallback(async (uid) => {
     setSyncing(true);
-    const [r, m, s] = await Promise.all([
+    const [r, m, s, t, a] = await Promise.all([
       fbGet(uid, "noche"),
       fbGet(uid, "manana"),
       fbGet(uid, "semana"),
+      fbGet(uid, "trimestre"),
+      fbGet(uid, "anual"),
     ]);
     if (r) { setRegistros(r); try { localStorage.setItem(KEY_NOCHE,  JSON.stringify(r)); } catch {} }
     if (m) { setMananaLog(m); try { localStorage.setItem(KEY_MANANA, JSON.stringify(m)); } catch {} }
-    if (s) { setSemanaLog(s); try { localStorage.setItem(KEY_SEMANA, JSON.stringify(s)); } catch {} }
+    if (s) {
+      const { migrated, cambios } = migrarSemanaLog(s);
+      setSemanaLog(migrated);
+      try { localStorage.setItem(KEY_SEMANA, JSON.stringify(migrated)); } catch {}
+      for (const {antes,despues} of cambios) {
+        await fbSet(uid, "semana", despues, migrated[despues]);
+        await fbDelete(uid, "semana", antes);
+      }
+    }
+    if (t) { setTrimestreLog(t); try { localStorage.setItem(KEY_TRIMESTRE, JSON.stringify(t)); } catch {} }
+    if (a) { setAnualLog(a); try { localStorage.setItem(KEY_ANUAL, JSON.stringify(a)); } catch {} }
     setSyncing(false);
   }, []);
 
@@ -187,7 +261,14 @@ export default function App() {
       try {
         const r = localStorage.getItem(KEY_NOCHE);  if (r) setRegistros(JSON.parse(r));
         const m = localStorage.getItem(KEY_MANANA); if (m) setMananaLog(JSON.parse(m));
-        const s = localStorage.getItem(KEY_SEMANA); if (s) setSemanaLog(JSON.parse(s));
+        const s = localStorage.getItem(KEY_SEMANA);
+        if (s) {
+          const { migrated } = migrarSemanaLog(JSON.parse(s));
+          setSemanaLog(migrated);
+          try { localStorage.setItem(KEY_SEMANA, JSON.stringify(migrated)); } catch {}
+        }
+        const t = localStorage.getItem(KEY_TRIMESTRE); if (t) setTrimestreLog(JSON.parse(t));
+        const a = localStorage.getItem(KEY_ANUAL);     if (a) setAnualLog(JSON.parse(a));
       } catch {}
     }
   }, [user, loadFromFirebase]);
@@ -205,11 +286,27 @@ export default function App() {
 
   // ── Pre-fill semana form ──
   useEffect(() => {
-    const wk = getWeekStart(todayBsAs());
+    const wk = relevantWeekStart(todayBsAs());
     const s = semanaLog[wk];
     if (s) setSemanaForm({s1:s.s1??"",s2:s.s2??"",s3:s.s3??""});
     else setSemanaForm({s1:"",s2:"",s3:""});
   }, [semanaLog]);
+
+  // ── Pre-fill trimestre form ──
+  useEffect(() => {
+    const { key } = trimestralStatus(todayBsAs());
+    const t = trimestreLog[key];
+    if (t) setTrimestreForm({t1:t.t1??"",t2:t.t2??"",t3:t.t3??""});
+    else setTrimestreForm({t1:"",t2:"",t3:""});
+  }, [trimestreLog]);
+
+  // ── Pre-fill anual form ──
+  useEffect(() => {
+    const { key } = anualStatus(todayBsAs());
+    const a = anualLog[key];
+    if (a) setAnualForm({a1:a.a1??"",a2:a.a2??"",a3:a.a3??"",a4:a.a4??""});
+    else setAnualForm({a1:"",a2:"",a3:"",a4:""});
+  }, [anualLog]);
 
   // ── Persist helpers ──
   const persistNoche = async (data) => {
@@ -232,8 +329,24 @@ export default function App() {
     setSemanaLog(data);
     try { localStorage.setItem(KEY_SEMANA, JSON.stringify(data)); } catch {}
     if (user) {
-      const wk = getWeekStart(todayBsAs());
+      const wk = relevantWeekStart(todayBsAs());
       await fbSet(user.uid, "semana", wk, data[wk]);
+    }
+  };
+  const persistTrimestre = async (data) => {
+    setTrimestreLog(data);
+    try { localStorage.setItem(KEY_TRIMESTRE, JSON.stringify(data)); } catch {}
+    if (user) {
+      const { key } = trimestralStatus(todayBsAs());
+      await fbSet(user.uid, "trimestre", key, data[key]);
+    }
+  };
+  const persistAnual = async (data) => {
+    setAnualLog(data);
+    try { localStorage.setItem(KEY_ANUAL, JSON.stringify(data)); } catch {}
+    if (user) {
+      const { key } = anualStatus(todayBsAs());
+      await fbSet(user.uid, "anual", key, data[key]);
     }
   };
 
@@ -256,10 +369,24 @@ export default function App() {
   };
 
   const handleGuardarSemana = async () => {
-    const wk = getWeekStart(todayBsAs());
+    const wk = relevantWeekStart(todayBsAs());
     const updated = {...semanaLog, [wk]:{...semanaForm, ts:todayBsAs()}};
     await persistSemana(updated);
     setSavedSemana(true); setTimeout(()=>setSavedSemana(false),2500);
+  };
+
+  const handleGuardarTrimestre = async () => {
+    const { key } = trimestralStatus(todayBsAs());
+    const updated = {...trimestreLog, [key]:{...trimestreForm, ts:todayBsAs()}};
+    await persistTrimestre(updated);
+    setSavedTrimestre(true); setTimeout(()=>setSavedTrimestre(false),2500);
+  };
+
+  const handleGuardarAnual = async () => {
+    const { key } = anualStatus(todayBsAs());
+    const updated = {...anualLog, [key]:{...anualForm, ts:todayBsAs()}};
+    await persistAnual(updated);
+    setSavedAnual(true); setTimeout(()=>setSavedAnual(false),2500);
   };
 
   // ── Computed ──
@@ -274,10 +401,20 @@ export default function App() {
   const mananasHechas = allDays.filter(d=>mananaLog[d]?.visto).length;
   const mananHoy    = !!(mananaLog[today]);
   const nocheHoy    = !!(registros[today]);
-  const wkStart     = getWeekStart(today);
-  const semanaHecha = !!(semanaLog[wkStart]);
-  const trimDue     = isTrimestralDue();
   const frase       = fraseDelDia();
+
+  const wkStart      = relevantWeekStart(today);
+  const semanaHecha  = !!(semanaLog[wkStart]);
+  const semanaVentanaAbierta = new Date(today+"T12:00:00").getDay()===6;
+  const semanaEstado = semanaHecha?"completada":(semanaVentanaAbierta?"pendiente":"vencida");
+
+  const trimInfo    = trimestralStatus(today);
+  const trimHecho   = !!(trimestreLog[trimInfo.key]);
+  const trimEstado  = trimHecho?"completada":(trimInfo.ventanaAbierta?"pendiente":"vencida");
+
+  const anualInfo   = anualStatus(today);
+  const anualHecho  = !!(anualLog[anualInfo.key]);
+  const anualEstado = anualHecho?"completada":(anualInfo.ventanaAbierta?"pendiente":"vencida");
 
   const weekGroups = {};
   allDays.forEach(d => {
@@ -301,9 +438,9 @@ export default function App() {
   });
 
   const badges = {
-    manana:  mananHoy?0:1,
-    noche:   nocheHoy?0:1,
-    semana:  semanaHecha?0:1,
+    manana:    mananHoy?0:1,
+    noche:     nocheHoy?0:1,
+    periodica: (semanaEstado!=="completada"||trimEstado!=="completada"||anualEstado!=="completada")?1:0,
   };
 
   // ── Loading state ──
@@ -386,7 +523,7 @@ export default function App() {
             {id:"manana",  label:"Mañana",   badge:badges.manana},
             {id:"noche",   label:"Noche",    badge:badges.noche},
             {id:"historial",label:"Historial",badge:0},
-            {id:"semana",  label:"Semana",   badge:badges.semana},
+            {id:"periodica",label:"Periódica",badge:badges.periodica},
             {id:"resumen", label:"Resumen",  badge:0},
           ].map(tab => (
             <button key={tab.id} onClick={()=>setView(tab.id)} style={{
@@ -562,65 +699,170 @@ export default function App() {
           </div>
         )}
 
-        {/* ── SEMANA ── */}
-        {view==="semana" && (
+        {/* ── PERIÓDICA ── */}
+        {view==="periodica" && (
           <div>
-            {trimDue&&(
-              <div style={{...card,background:C.goldBg,border:`1px solid ${C.gold}`,marginBottom:20}}>
-                <div style={{fontSize:13,fontWeight:700,color:C.gold,marginBottom:4}}>⭐ Revisión trimestral pendiente</div>
-                <div style={{fontSize:13,color:C.textSecond,lineHeight:1.6}}>Estamos en el último mes del trimestre. Es momento de revisar tu misión, visión, roles y objetivos en Drive.</div>
-                <div style={{fontSize:12,color:C.textMuted,marginTop:8}}>Preguntas clave: ¿Mis objetivos siguen siendo los correctos? ¿Qué roles descuidé? ¿Qué ajusto para el próximo trimestre?</div>
+            <div style={{display:"flex",gap:4,marginBottom:20,background:C.surfaceAlt,borderRadius:10,padding:4}}>
+              {[
+                {id:"semanal",    label:"Semanal",    pend:semanaEstado!=="completada"},
+                {id:"trimestral", label:"Trimestral", pend:trimEstado!=="completada"},
+                {id:"anual",      label:"Anual",      pend:anualEstado!=="completada"},
+              ].map(sub=>(
+                <button key={sub.id} onClick={()=>setPeriodicaSub(sub.id)} style={{
+                  flex:1,position:"relative",padding:"10px 8px",borderRadius:8,border:"none",cursor:"pointer",
+                  background:periodicaSub===sub.id?C.navy:"transparent",
+                  color:periodicaSub===sub.id?C.white:C.textSecond,
+                  fontSize:13,fontFamily:"inherit",fontWeight:600,transition:"all 0.2s",
+                }}>
+                  {sub.label}
+                  {sub.pend && <span style={{position:"absolute",top:4,right:6,width:6,height:6,borderRadius:"50%",background:periodicaSub===sub.id?C.celesteLight:C.warn}}/>}
+                </button>
+              ))}
+            </div>
+
+            {periodicaSub==="semanal" && (
+              <div>
+                <EstadoBanner estado={semanaEstado}
+                  tituloPendiente="📋 Reflexión semanal pendiente"
+                  tituloVencida="⚠️ Reflexión semanal vencida"
+                  tituloCompletada="✓ Reflexión semanal completada"
+                  subtitulo={`Semana del ${formatDate(wkStart)} al ${formatDate(addDays(wkStart,6))}`}/>
+
+                <div style={{...card,marginBottom:20}}>
+                  <SLabel>Antes de planificar — ¿qué necesita cada rol esta semana?</SLabel>
+                  {ROLES.map((r,i)=>(
+                    <div key={i} style={{display:"flex",gap:10,alignItems:"center",paddingBottom:i<ROLES.length-1?10:0,marginBottom:i<ROLES.length-1?10:0,borderBottom:i<ROLES.length-1?`1px solid ${C.border}`:"none"}}>
+                      <div style={{width:24,height:24,borderRadius:"50%",background:C.navy,color:C.white,fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{r.num}</div>
+                      <div style={{fontSize:13,color:C.textPrimary,fontWeight:500}}>{r.nombre}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={card}>
+                  <SLabel>Reflexión semanal</SLabel>
+                  {PREGUNTAS_SEMANA.map((p,i)=>(
+                    <div key={p.id} style={{marginBottom:i<PREGUNTAS_SEMANA.length-1?20:0}}>
+                      <div style={{fontSize:14,fontWeight:500,color:C.textPrimary,marginBottom:8,lineHeight:1.5}}>{p.pregunta}</div>
+                      <textarea placeholder={p.placeholder} value={semanaForm[p.id]}
+                        onChange={e=>setSemanaForm({...semanaForm,[p.id]:e.target.value})}
+                        rows={3} style={{...inp,resize:"none",lineHeight:1.5,fontSize:13}}/>
+                    </div>
+                  ))}
+                  <button onClick={handleGuardarSemana} style={{width:"100%",padding:14,borderRadius:10,border:"none",cursor:"pointer",background:C.navy,color:C.white,fontSize:15,fontFamily:"inherit",fontWeight:600,marginTop:16}}>
+                    {savedSemana?"✓ Reflexión guardada y sincronizada":"Guardar reflexión semanal"}
+                  </button>
+                </div>
+
+                {Object.keys(semanaLog).length>0&&(
+                  <div style={{marginTop:24}}>
+                    <SLabel>Reflexiones anteriores</SLabel>
+                    {Object.keys(semanaLog).sort((a,b)=>b.localeCompare(a)).map(wk=>{
+                      const s=semanaLog[wk];
+                      const [,m,d]=wk.split("-");
+                      return (
+                        <div key={wk} style={{...card,marginBottom:12}}>
+                          <div style={{fontSize:13,fontWeight:600,color:C.navy,marginBottom:12}}>Semana del {d}/{m}</div>
+                          {PREGUNTAS_SEMANA.map(p=>(
+                            <div key={p.id} style={{marginBottom:10}}>
+                              <div style={{fontSize:11,color:C.celeste,textTransform:"uppercase",letterSpacing:1,marginBottom:3}}>{p.pregunta.slice(0,45)}…</div>
+                              <div style={{fontSize:13,color:C.textSecond}}>{s[p.id]||<em style={{color:C.textMuted}}>Sin respuesta</em>}</div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
-            <div style={{...card,background:semanaHecha?C.yesBg:C.warnBg,border:`1px solid ${semanaHecha?C.yes:C.warn}`,marginBottom:20}}>
-              <div style={{fontSize:13,fontWeight:600,color:semanaHecha?C.yes:C.warn}}>{semanaHecha?"✓ Reflexión semanal completada":"📋 Reflexión semanal pendiente"}</div>
-              <div style={{fontSize:12,color:C.textMuted,marginTop:2}}>Semana del {formatDate(wkStart)}</div>
-            </div>
+            {periodicaSub==="trimestral" && (
+              <div>
+                <EstadoBanner estado={trimEstado}
+                  tituloPendiente="⭐ Reflexión trimestral pendiente"
+                  tituloVencida="⚠️ Reflexión trimestral vencida"
+                  tituloCompletada="✓ Reflexión trimestral completada"
+                  subtitulo={`T${trimInfo.quarter} ${trimInfo.quarterYear}`}/>
 
-            <div style={{...card,marginBottom:20}}>
-              <SLabel>Antes de planificar — ¿qué necesita cada rol esta semana?</SLabel>
-              {ROLES.map((r,i)=>(
-                <div key={i} style={{display:"flex",gap:10,alignItems:"center",paddingBottom:i<ROLES.length-1?10:0,marginBottom:i<ROLES.length-1?10:0,borderBottom:i<ROLES.length-1?`1px solid ${C.border}`:"none"}}>
-                  <div style={{width:24,height:24,borderRadius:"50%",background:C.navy,color:C.white,fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{r.num}</div>
-                  <div style={{fontSize:13,color:C.textPrimary,fontWeight:500}}>{r.nombre}</div>
-                </div>
-              ))}
-            </div>
-
-            <div style={card}>
-              <SLabel>Reflexión semanal</SLabel>
-              {PREGUNTAS_SEMANA.map((p,i)=>(
-                <div key={p.id} style={{marginBottom:i<PREGUNTAS_SEMANA.length-1?20:0}}>
-                  <div style={{fontSize:14,fontWeight:500,color:C.textPrimary,marginBottom:8,lineHeight:1.5}}>{p.pregunta}</div>
-                  <textarea placeholder={p.placeholder} value={semanaForm[p.id]}
-                    onChange={e=>setSemanaForm({...semanaForm,[p.id]:e.target.value})}
-                    rows={3} style={{...inp,resize:"none",lineHeight:1.5,fontSize:13}}/>
-                </div>
-              ))}
-              <button onClick={handleGuardarSemana} style={{width:"100%",padding:14,borderRadius:10,border:"none",cursor:"pointer",background:C.navy,color:C.white,fontSize:15,fontFamily:"inherit",fontWeight:600,marginTop:16}}>
-                {savedSemana?"✓ Reflexión guardada y sincronizada":"Guardar reflexión semanal"}
-              </button>
-            </div>
-
-            {Object.keys(semanaLog).length>0&&(
-              <div style={{marginTop:24}}>
-                <SLabel>Reflexiones anteriores</SLabel>
-                {Object.keys(semanaLog).sort((a,b)=>b.localeCompare(a)).map(wk=>{
-                  const s=semanaLog[wk];
-                  const [,m,d]=wk.split("-");
-                  return (
-                    <div key={wk} style={{...card,marginBottom:12}}>
-                      <div style={{fontSize:13,fontWeight:600,color:C.navy,marginBottom:12}}>Semana del {d}/{m}</div>
-                      {PREGUNTAS_SEMANA.map(p=>(
-                        <div key={p.id} style={{marginBottom:10}}>
-                          <div style={{fontSize:11,color:C.celeste,textTransform:"uppercase",letterSpacing:1,marginBottom:3}}>{p.pregunta.slice(0,45)}…</div>
-                          <div style={{fontSize:13,color:C.textSecond}}>{s[p.id]||<em style={{color:C.textMuted}}>Sin respuesta</em>}</div>
-                        </div>
-                      ))}
+                <div style={card}>
+                  <SLabel>Reflexión trimestral</SLabel>
+                  {PREGUNTAS_TRIMESTRE.map((p,i)=>(
+                    <div key={p.id} style={{marginBottom:i<PREGUNTAS_TRIMESTRE.length-1?20:0}}>
+                      <div style={{fontSize:14,fontWeight:500,color:C.textPrimary,marginBottom:8,lineHeight:1.5}}>{p.pregunta}</div>
+                      <textarea placeholder={p.placeholder} value={trimestreForm[p.id]}
+                        onChange={e=>setTrimestreForm({...trimestreForm,[p.id]:e.target.value})}
+                        rows={3} style={{...inp,resize:"none",lineHeight:1.5,fontSize:13}}/>
                     </div>
-                  );
-                })}
+                  ))}
+                  <button onClick={handleGuardarTrimestre} style={{width:"100%",padding:14,borderRadius:10,border:"none",cursor:"pointer",background:C.navy,color:C.white,fontSize:15,fontFamily:"inherit",fontWeight:600,marginTop:16}}>
+                    {savedTrimestre?"✓ Reflexión guardada y sincronizada":"Guardar reflexión trimestral"}
+                  </button>
+                </div>
+
+                {Object.keys(trimestreLog).length>0&&(
+                  <div style={{marginTop:24}}>
+                    <SLabel>Reflexiones anteriores</SLabel>
+                    {Object.keys(trimestreLog).sort((a,b)=>b.localeCompare(a)).map(key=>{
+                      const t=trimestreLog[key];
+                      return (
+                        <div key={key} style={{...card,marginBottom:12}}>
+                          <div style={{fontSize:13,fontWeight:600,color:C.navy,marginBottom:12}}>{key.replace("-Q"," · T")}</div>
+                          {PREGUNTAS_TRIMESTRE.map(p=>(
+                            <div key={p.id} style={{marginBottom:10}}>
+                              <div style={{fontSize:11,color:C.celeste,textTransform:"uppercase",letterSpacing:1,marginBottom:3}}>{p.pregunta.slice(0,45)}…</div>
+                              <div style={{fontSize:13,color:C.textSecond}}>{t[p.id]||<em style={{color:C.textMuted}}>Sin respuesta</em>}</div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {periodicaSub==="anual" && (
+              <div>
+                <EstadoBanner estado={anualEstado}
+                  tituloPendiente="⭐ Reflexión anual pendiente"
+                  tituloVencida="⚠️ Reflexión anual vencida"
+                  tituloCompletada="✓ Reflexión anual completada"
+                  subtitulo={`Año ${anualInfo.reviewedYear}`}/>
+
+                <div style={card}>
+                  <SLabel>Reflexión anual</SLabel>
+                  {PREGUNTAS_ANUAL.map((p,i)=>(
+                    <div key={p.id} style={{marginBottom:i<PREGUNTAS_ANUAL.length-1?20:0}}>
+                      <div style={{fontSize:14,fontWeight:500,color:C.textPrimary,marginBottom:8,lineHeight:1.5}}>{p.pregunta}</div>
+                      <textarea placeholder={p.placeholder} value={anualForm[p.id]}
+                        onChange={e=>setAnualForm({...anualForm,[p.id]:e.target.value})}
+                        rows={3} style={{...inp,resize:"none",lineHeight:1.5,fontSize:13}}/>
+                    </div>
+                  ))}
+                  <button onClick={handleGuardarAnual} style={{width:"100%",padding:14,borderRadius:10,border:"none",cursor:"pointer",background:C.navy,color:C.white,fontSize:15,fontFamily:"inherit",fontWeight:600,marginTop:16}}>
+                    {savedAnual?"✓ Reflexión guardada y sincronizada":"Guardar reflexión anual"}
+                  </button>
+                </div>
+
+                {Object.keys(anualLog).length>0&&(
+                  <div style={{marginTop:24}}>
+                    <SLabel>Reflexiones anteriores</SLabel>
+                    {Object.keys(anualLog).sort((a,b)=>b.localeCompare(a)).map(year=>{
+                      const a=anualLog[year];
+                      return (
+                        <div key={year} style={{...card,marginBottom:12}}>
+                          <div style={{fontSize:13,fontWeight:600,color:C.navy,marginBottom:12}}>Año {year}</div>
+                          {PREGUNTAS_ANUAL.map(p=>(
+                            <div key={p.id} style={{marginBottom:10}}>
+                              <div style={{fontSize:11,color:C.celeste,textTransform:"uppercase",letterSpacing:1,marginBottom:3}}>{p.pregunta.slice(0,45)}…</div>
+                              <div style={{fontSize:13,color:C.textSecond}}>{a[p.id]||<em style={{color:C.textMuted}}>Sin respuesta</em>}</div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -691,11 +933,17 @@ export default function App() {
                 </div>
 
                 <div style={card}>
-                  <SLabel>Reflexiones semanales</SLabel>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <div style={{fontSize:13,color:C.textSecond}}>Reflexiones completadas</div>
-                    <div style={{fontSize:24,fontWeight:700,color:C.navy}}>{Object.keys(semanaLog).length}</div>
-                  </div>
+                  <SLabel>Reflexiones periódicas</SLabel>
+                  {[
+                    {label:"Semanales",   val:Object.keys(semanaLog).length},
+                    {label:"Trimestrales",val:Object.keys(trimestreLog).length},
+                    {label:"Anuales",     val:Object.keys(anualLog).length},
+                  ].map((s,i,arr)=>(
+                    <div key={s.label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:i<arr.length-1?10:0,marginBottom:i<arr.length-1?10:0,borderBottom:i<arr.length-1?`1px solid ${C.border}`:"none"}}>
+                      <div style={{fontSize:13,color:C.textSecond}}>{s.label}</div>
+                      <div style={{fontSize:20,fontWeight:700,color:C.navy}}>{s.val}</div>
+                    </div>
+                  ))}
                 </div>
 
                 <div style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap",marginTop:8}}>
@@ -732,6 +980,21 @@ const lbl = {
 };
 function SLabel({children}){
   return <div style={{fontSize:11,letterSpacing:2,color:"#8aa3c0",textTransform:"uppercase",marginBottom:14}}>{children}</div>;
+}
+function EstadoBanner({estado, tituloPendiente, tituloVencida, tituloCompletada, subtitulo}){
+  const colores = {
+    pendiente:  {bg:C.warnBg, border:C.warn, text:C.warn},
+    vencida:    {bg:C.noBg,   border:C.no,   text:C.no},
+    completada: {bg:C.yesBg,  border:C.yes,  text:C.yes},
+  };
+  const c = colores[estado];
+  const titulo = estado==="pendiente"?tituloPendiente:estado==="vencida"?tituloVencida:tituloCompletada;
+  return (
+    <div style={{...card, background:c.bg, border:`1px solid ${c.border}`, marginBottom:20}}>
+      <div style={{fontSize:13,fontWeight:600,color:c.text}}>{titulo}</div>
+      {subtitulo && <div style={{fontSize:12,color:"#8aa3c0",marginTop:2}}>{subtitulo}</div>}
+    </div>
+  );
 }
 function Empty(){
   return <div style={{textAlign:"center",color:"#8aa3c0",padding:"56px 0",fontSize:15}}>Aún no hay registros.<br/><span style={{fontSize:13}}>Completá tu primer chequeo nocturno.</span></div>;
