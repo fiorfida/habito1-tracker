@@ -3,6 +3,7 @@ import { db, auth, loginWithGoogle, logout, onAuthChange } from "./firebase";
 import {
   doc, getDoc, setDoc, deleteDoc, collection, getDocs
 } from "firebase/firestore";
+import "./responsive.css";
 
 // ─── Timezone helper ───────────────────────────────────────────────────
 function todayBsAs() {
@@ -495,7 +496,7 @@ export default function App() {
 
       {/* Header */}
       <div style={{background:C.navy,position:"sticky",top:0,zIndex:20,boxShadow:"0 2px 12px rgba(0,31,91,0.3)"}}>
-        <div style={{maxWidth:640,margin:"0 auto",padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div className="container" style={{padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
             <div style={{width:34,height:34,flexShrink:0}}>
               <svg viewBox="0 0 38 44" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -521,7 +522,7 @@ export default function App() {
         </div>
 
         {/* Nav */}
-        <div style={{maxWidth:640,margin:"0 auto",display:"flex",borderTop:"1px solid rgba(255,255,255,0.1)",overflowX:"auto"}}>
+        <div className="container" style={{display:"flex",borderTop:"1px solid rgba(255,255,255,0.1)",overflowX:"auto"}}>
           {[
             {id:"home",    label:"Home",     badge:badges.home},
             {id:"manana",  label:"Mañana",   badge:badges.manana},
@@ -545,28 +546,32 @@ export default function App() {
         </div>
       </div>
 
-      <div style={{maxWidth:640,margin:"0 auto",padding:"20px 16px 80px"}}>
+      <div className="container" style={{padding:"20px 16px 80px"}}>
 
         {/* ── HOME ── */}
         {view==="home" && (
           <div>
             <div style={{fontSize:11,letterSpacing:2,color:C.textMuted,textTransform:"uppercase",marginBottom:14}}>{dayOfWeek(today)} {formatDate(today)}</div>
 
-            <HomeRow icon="☀️" label="Mañana" estado={mananHoy?"completada":"pendiente"}
-              detalle={mananHoy?"Misión, visión y roles leídos hoy.":"Todavía no la hiciste hoy."}
-              onClick={()=>setView("manana")}/>
-            <HomeRow icon="🌙" label="Noche" estado={nocheHoy?"completada":"pendiente"}
-              detalle={nocheHoy?"Registro del día guardado.":"Falta tu reflexión nocturna."}
-              onClick={()=>setView("noche")}/>
+            <div className="grid-2">
+              <HomeRow icon="☀️" label="Mañana" estado={mananHoy?"completada":"pendiente"}
+                detalle={mananHoy?"Misión, visión y roles leídos hoy.":"Todavía no la hiciste hoy."}
+                onClick={()=>setView("manana")}/>
+              <HomeRow icon="🌙" label="Noche" estado={nocheHoy?"completada":"pendiente"}
+                detalle={nocheHoy?"Registro del día guardado.":"Falta tu reflexión nocturna."}
+                onClick={()=>setView("noche")}/>
+            </div>
 
             <div style={{marginTop:24}}>
               <SLabel>Periódica</SLabel>
-              <HomeRow icon="📋" label="Semanal" estado={semanaEstado}
-                onClick={()=>{setView("periodica");setPeriodicaSub("semanal");}}/>
-              <HomeRow icon="⭐" label="Trimestral" estado={trimEstado}
-                onClick={()=>{setView("periodica");setPeriodicaSub("trimestral");}}/>
-              <HomeRow icon="⭐" label="Anual" estado={anualEstado}
-                onClick={()=>{setView("periodica");setPeriodicaSub("anual");}}/>
+              <div className="grid-3">
+                <HomeRow icon="📋" label="Semanal" estado={semanaEstado}
+                  onClick={()=>{setView("periodica");setPeriodicaSub("semanal");}}/>
+                <HomeRow icon="⭐" label="Trimestral" estado={trimEstado}
+                  onClick={()=>{setView("periodica");setPeriodicaSub("trimestral");}}/>
+                <HomeRow icon="⭐" label="Anual" estado={anualEstado}
+                  onClick={()=>{setView("periodica");setPeriodicaSub("anual");}}/>
+              </div>
             </div>
           </div>
         )}
@@ -597,15 +602,17 @@ export default function App() {
 
             <div style={card}>
               <SLabel>✦ Mis 8 Roles</SLabel>
-              {ROLES.map((r,i)=>(
-                <div key={i} style={{display:"flex",gap:12,alignItems:"flex-start",paddingBottom:i<ROLES.length-1?14:0,marginBottom:i<ROLES.length-1?14:0,borderBottom:i<ROLES.length-1?`1px solid ${C.border}`:"none"}}>
-                  <div style={{width:28,height:28,borderRadius:"50%",background:C.navy,color:C.white,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{r.num}</div>
-                  <div>
-                    <div style={{fontSize:14,fontWeight:600,color:C.textPrimary}}>{r.nombre}</div>
-                    <div style={{fontSize:12,color:C.textMuted,marginTop:2}}>{r.desc}</div>
+              <div className="roles-grid">
+                {ROLES.map((r,i)=>(
+                  <div key={i} style={{display:"flex",gap:12,alignItems:"flex-start",paddingBottom:i<ROLES.length-1?14:0,marginBottom:i<ROLES.length-1?14:0,borderBottom:i<ROLES.length-1?`1px solid ${C.border}`:"none"}}>
+                    <div style={{width:28,height:28,borderRadius:"50%",background:C.navy,color:C.white,fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{r.num}</div>
+                    <div>
+                      <div style={{fontSize:14,fontWeight:600,color:C.textPrimary}}>{r.nombre}</div>
+                      <div style={{fontSize:12,color:C.textMuted,marginTop:2}}>{r.desc}</div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
 
             {!mananHoy && <button onClick={handleMarcarManana} style={{width:"100%",padding:14,borderRadius:10,border:"none",cursor:"pointer",background:C.navy,color:C.white,fontSize:15,fontFamily:"inherit",fontWeight:600}}>✓ Marcar revisión matutina como completada</button>}
@@ -676,7 +683,8 @@ export default function App() {
               </div>
             )}
             {allDays.length===0?<Empty/>:(
-              [...allDays].reverse().map(d=>{
+              <div className="historial-grid">
+              {[...allDays].reverse().map(d=>{
                 const r=registros[d];
                 const mHecha=!!(mananaLog[d]?.visto);
                 const isMissed=!r&&d!==today;
@@ -722,7 +730,8 @@ export default function App() {
                     )}
                   </div>
                 );
-              })
+              })}
+              </div>
             )}
           </div>
         )}
@@ -758,12 +767,14 @@ export default function App() {
 
                 <div style={{...card,marginBottom:20}}>
                   <SLabel>Antes de planificar — ¿qué necesita cada rol esta semana?</SLabel>
-                  {ROLES.map((r,i)=>(
-                    <div key={i} style={{display:"flex",gap:10,alignItems:"center",paddingBottom:i<ROLES.length-1?10:0,marginBottom:i<ROLES.length-1?10:0,borderBottom:i<ROLES.length-1?`1px solid ${C.border}`:"none"}}>
-                      <div style={{width:24,height:24,borderRadius:"50%",background:C.navy,color:C.white,fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{r.num}</div>
-                      <div style={{fontSize:13,color:C.textPrimary,fontWeight:500}}>{r.nombre}</div>
-                    </div>
-                  ))}
+                  <div className="roles-grid">
+                    {ROLES.map((r,i)=>(
+                      <div key={i} style={{display:"flex",gap:10,alignItems:"center",paddingBottom:i<ROLES.length-1?10:0,marginBottom:i<ROLES.length-1?10:0,borderBottom:i<ROLES.length-1?`1px solid ${C.border}`:"none"}}>
+                        <div style={{width:24,height:24,borderRadius:"50%",background:C.navy,color:C.white,fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{r.num}</div>
+                        <div style={{fontSize:13,color:C.textPrimary,fontWeight:500}}>{r.nombre}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div style={card}>
@@ -901,6 +912,7 @@ export default function App() {
           <div>
             {tracked.length===0&&mananasHechas===0?<Empty/>:(
               <>
+              <div className="grid-2">
                 <div style={card}>
                   <SLabel>Global</SLabel>
                   <div style={{display:"flex",gap:0,flexWrap:"wrap"}}>
@@ -973,6 +985,7 @@ export default function App() {
                     </div>
                   ))}
                 </div>
+              </div>
 
                 <div style={{display:"flex",gap:14,justifyContent:"center",flexWrap:"wrap",marginTop:8}}>
                   {[{color:C.perfect,label:"4/4 perfecto"},{color:C.good,label:"3/4"},{color:C.mid,label:"1-2/4"},{color:C.bad,label:"0/4"},{color:C.skip,label:"Sin registro"}].map(l=>(
