@@ -29,6 +29,8 @@ const C = {
 // ─── Contenido fijo ────────────────────────────────────────────────────
 const MISION = `Soy Facundo Iorfida y me comprometo a vivir una vida plena y alineada con lo que soy, lo que creo y lo que quiero lograr.
 
+Para eso, voy a:
+
 • Ser un padre presente y amoroso, acompañando a Francesca con el ejemplo, el amor y los valores necesarios para que crezca sana, feliz y libre.
 • Ponerle pasión a todo lo que haga, disfrutar el proceso y estar presente de verdad, sin vivir a medias.
 • Apostar a mi crecimiento personal, conociéndome más, y cuidar mi cuerpo y mi mente, porque son la base de mi energía, claridad y mejor versión.
@@ -59,6 +61,23 @@ const ROLES = [
   { num:"6", nombre:"Lead Analyst Tecpetrol", desc:"Referente del área, liderazgo real, camino a Team Leader." },
   { num:"7", nombre:"Emprendedor",          desc:"Freelance (IJ, Yungo, Lubich) + proyecto inmobiliario Riglos." },
   { num:"8", nombre:"Referente CCBP",       desc:"Comunidad, organización, presencia deportiva y comisión." },
+];
+
+const FRASES = [
+  { habito:1, nombre:"Sea proactivo", texto:"Entre lo que te pasa y cómo respondés, hay un espacio: ahí se construye el papá, el socio y el líder que querés ser." },
+  { habito:1, nombre:"Sea proactivo", texto:"Hoy podés gastar energía en lo que no controlás, o invertirla en tu círculo de influencia: Francesca, Flo, tu equipo, Riglos." },
+  { habito:2, nombre:"Empiece con un fin en mente", texto:"Todo se crea dos veces: primero en tu cabeza, después en el día a día. ¿Qué estás creando hoy para tu familia y tu futuro?" },
+  { habito:2, nombre:"Empiece con un fin en mente", texto:"Tu misión no es un texto guardado: es el filtro con el que elegís en qué usar las próximas horas." },
+  { habito:3, nombre:"Primero lo primero", texto:"Lo urgente grita, lo importante espera en silencio. Hoy, ¿le diste lugar al Cuadrante II: tu cuerpo, Flo, Francesca, Riglos?" },
+  { habito:3, nombre:"Primero lo primero", texto:"No se trata de ordenar la agenda de tus prioridades, sino de priorizar lo que ponés en la agenda." },
+  { habito:4, nombre:"Piense en ganar/ganar", texto:"En Tecpetrol, con Flo, con tu equipo: buscá el resultado donde ganan los dos, no el que te deja solo arriba." },
+  { habito:4, nombre:"Piense en ganar/ganar", texto:"La mentalidad de abundancia dice que hay éxito de sobra para todos. Hoy, ¿elegiste competir o construir junto a otros?" },
+  { habito:5, nombre:"Procure primero comprender, y después ser comprendido", texto:"Antes de responder, escuchá para entender, no para contestar. Con Flo, con Josefina, con tu equipo." },
+  { habito:5, nombre:"Procure primero comprender, y después ser comprendido", texto:"Escuchar de verdad es el depósito más grande que podés hacer en la cuenta emocional de alguien." },
+  { habito:6, nombre:"Sinergice", texto:"La diferencia de mirada del otro no es un obstáculo: es la materia prima de una solución mejor a la que ibas a llegar solo." },
+  { habito:6, nombre:"Sinergice", texto:"Hoy buscá la tercera alternativa: ni tu idea, ni la del otro — la que todavía no apareció." },
+  { habito:7, nombre:"Afile la sierra", texto:"Cuerpo, mente, espíritu y vínculos: afilar la sierra en las cuatro te hace más efectivo en todo lo demás, no menos productivo." },
+  { habito:7, nombre:"Afile la sierra", texto:"No tenés tiempo para no afilar la sierra. Tu victoria privada de hoy sostiene la pública de mañana." },
 ];
 
 const PREGUNTAS_H1 = [
@@ -110,6 +129,13 @@ function dotColor(reg){
 function isTrimestralDue(){
   const m=parseInt(todayBsAs().split("-")[1]);
   return m%3===0;
+}
+function fraseDelDia(){
+  const epoca = new Date("2026-01-01T12:00:00");
+  const hoy   = new Date(todayBsAs()+"T12:00:00");
+  const dias  = Math.round((hoy-epoca)/86400000);
+  const idx   = ((dias%FRASES.length)+FRASES.length)%FRASES.length;
+  return FRASES[idx];
 }
 
 // ─── Firebase helpers ──────────────────────────────────────────────────
@@ -261,6 +287,7 @@ export default function App() {
   const wkStart     = getWeekStart(today);
   const semanaHecha = !!(semanaLog[wkStart]);
   const trimDue     = isTrimestralDue();
+  const frase       = fraseDelDia();
 
   const weekGroups = {};
   allDays.forEach(d => {
@@ -401,8 +428,8 @@ export default function App() {
             </div>
 
             <div style={{...card,background:C.celestePale,border:`1px solid ${C.celeste}`,marginBottom:20}}>
-              <div style={{fontSize:11,letterSpacing:2,color:C.celeste,textTransform:"uppercase",marginBottom:8}}>Pregunta ancla — Hábito 2</div>
-              <div style={{fontSize:15,fontStyle:"italic",color:C.navy,lineHeight:1.6}}>"¿Qué puede pasar hoy que, si no lo elijo yo, lo va a elegir el entorno por mí?"</div>
+              <div style={{fontSize:11,letterSpacing:2,color:C.celeste,textTransform:"uppercase",marginBottom:8}}>Hábito {frase.habito} — {frase.nombre}</div>
+              <div style={{fontSize:15,fontStyle:"italic",color:C.navy,lineHeight:1.6}}>"{frase.texto}"</div>
             </div>
 
             <div style={card}>
