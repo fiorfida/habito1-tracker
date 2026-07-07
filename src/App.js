@@ -41,17 +41,6 @@ Para eso, voy a:
 
 Elijo vivir con intención, sabiendo que cada día me da la chance de escribir una historia única.`;
 
-const VISION_ITEMS = [
-  { titulo: "Familia y amor", texto: "Una pareja sólida y elegida con Flo, con Francesca creciendo como parte central de mi vida, y la familia agrandándose con uno o dos hijos más. La familia grande unida y presente, y Pepita acompañada por su 'hermanita' coneja." },
-  { titulo: "Paternidad", texto: "Un padre activo y presente en todas las dimensiones — física, anímica y espiritualmente — capaz de jugar, acompañar y ser el ejemplo que Francesca necesita en cada etapa." },
-  { titulo: "Cuerpo y salud", texto: "Un cuerpo cuidado, con energía sostenida y bienestar físico como base de todo lo demás. Rutina sana: entrenamiento, desayuno nutritivo y orden cotidiano como pilares inamovibles." },
-  { titulo: "Trabajo y profesión", texto: "Liderando mi propio comercio o empresa — donde yo sea el dueño y el que toma las decisiones." },
-  { titulo: "Libertad financiera y viajes", texto: "Libertad financiera real como meta fundamental. Viajes con Flo y la familia, subiendo a aviones con destinos elegidos, sin restricciones económicas." },
-  { titulo: "Hogar propio", texto: "Un hogar moderno, luminoso y minimalista — dormitorio, living y cocina de calidad — que sea el refugio y el centro de mi familia." },
-  { titulo: "Amigos y comunidad", texto: "Grupos grandes, celebraciones, pertenencia. La presencia de familia y amigos como algo irremplazable. El fútbol del CCBP como espacio de comunidad y disfrute." },
-  { titulo: "Racing", texto: "En la cancha, de local y de visitante, con familia disfrutando lo que amo." },
-];
-
 const ROLES = [
   { num:"1", nombre:"Facundo",              desc:"Desarrollo personal, hábitos, cuerpo y mente." },
   { num:"2", nombre:"Papá de Francesca",    desc:"Padre presente, amoroso, que lidera con el ejemplo." },
@@ -439,12 +428,8 @@ export default function App() {
 
             <div style={card}>
               <SLabel>✦ Visión Personal — 5 años</SLabel>
-              {VISION_ITEMS.map((v,i)=>(
-                <div key={i} style={{marginBottom:i<VISION_ITEMS.length-1?16:0}}>
-                  <div style={{fontSize:12,fontWeight:700,color:C.celeste,marginBottom:3,textTransform:"uppercase",letterSpacing:1}}>{v.titulo}</div>
-                  <div style={{fontSize:13,color:C.textSecond,lineHeight:1.6}}>{v.texto}</div>
-                </div>
-              ))}
+              <img src={`${process.env.PUBLIC_URL}/vision.jpg`} alt="Visión personal a 5 años"
+                style={{width:"100%",height:"auto",display:"block",borderRadius:8}}/>
             </div>
 
             <div style={card}>
