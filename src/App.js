@@ -55,6 +55,25 @@ const ROLES = [
   { num:"8", nombre:"Referente CCBP",       desc:"Comunidad, organización, presencia deportiva y comisión." },
 ];
 
+function emptyMetas() {
+  const m = {};
+  ROLES.forEach(r => { m[r.num] = ["", "", ""]; });
+  return m;
+}
+function mergeMetas(saved) {
+  const base = emptyMetas();
+  if (!saved) return base;
+  ROLES.forEach(r => {
+    const arr = saved[r.num];
+    if (Array.isArray(arr)) base[r.num] = [arr[0]??"", arr[1]??"", arr[2]??""];
+  });
+  return base;
+}
+function metasActivas(metas) {
+  if (!metas) return [];
+  return ROLES.filter(r => (metas[r.num]||[]).some(v => v && v.trim()));
+}
+
 const FRASES = [
   { habito:1, nombre:"Sea proactivo", texto:"Entre lo que te pasa y cómo respondés, hay un espacio: ahí se construye el papá, el socio y el líder que querés ser." },
   { habito:1, nombre:"Sea proactivo", texto:"Hoy podés gastar energía en lo que no controlás, o invertirla en tu círculo de influencia: Francesca, Flo, tu equipo, Riglos." },
@@ -214,7 +233,7 @@ export default function App() {
     fecha:todayBsAs(), p1:null,p1_nota:"",p2:null,p2_nota:"",p3:null,p3_nota:"",p4:null,p4_nota:"",
   });
   const [savedNoche,  setSavedNoche]  = useState(false);
-  const [semanaForm,  setSemanaForm]  = useState({s1:"",s2:"",s3:""});
+  const [semanaForm,  setSemanaForm]  = useState({s1:"",s2:"",s3:"",metas:emptyMetas()});
   const [savedSemana, setSavedSemana] = useState(false);
   const [trimestreForm,  setTrimestreForm]  = useState({t1:"",t2:"",t3:""});
   const [savedTrimestre, setSavedTrimestre] = useState(false);
@@ -289,8 +308,8 @@ export default function App() {
   useEffect(() => {
     const wk = relevantWeekStart(todayBsAs());
     const s = semanaLog[wk];
-    if (s) setSemanaForm({s1:s.s1??"",s2:s.s2??"",s3:s.s3??""});
-    else setSemanaForm({s1:"",s2:"",s3:""});
+    if (s) setSemanaForm({s1:s.s1??"",s2:s.s2??"",s3:s.s3??"",metas:mergeMetas(s.metas)});
+    else setSemanaForm({s1:"",s2:"",s3:"",metas:emptyMetas()});
   }, [semanaLog]);
 
   // ── Pre-fill trimestre form ──
@@ -374,6 +393,10 @@ export default function App() {
     const updated = {...semanaLog, [wk]:{...semanaForm, ts:todayBsAs()}};
     await persistSemana(updated);
     setSavedSemana(true); setTimeout(()=>setSavedSemana(false),2500);
+  };
+
+  const handleMetaChange = (roleNum, idx, value) => {
+    setSemanaForm(f => ({...f, metas:{...f.metas, [roleNum]: f.metas[roleNum].map((v,i)=>i===idx?value:v)}}));
   };
 
   const handleGuardarTrimestre = async () => {
@@ -682,6 +705,21 @@ export default function App() {
                 <div style={{fontSize:28,fontWeight:700,color:scoreColor(consistency)}}>{consistency}%</div>
               </div>
             )}
+            {Object.keys(semanaLog).filter(wk=>metasActivas(semanaLog[wk].metas).length>0).length>0 && (
+              <div style={{marginBottom:20}}>
+                <SLabel>Metas semanales por rol</SLabel>
+                {Object.keys(semanaLog).filter(wk=>metasActivas(semanaLog[wk].metas).length>0).sort((a,b)=>b.localeCompare(a)).map(wk=>{
+                  const s=semanaLog[wk];
+                  const [,m,d]=wk.split("-");
+                  return (
+                    <div key={wk} style={{...card,marginBottom:10}}>
+                      <div style={{fontSize:13,fontWeight:600,color:C.navy,marginBottom:8}}>Semana del {d}/{m}</div>
+                      <MetasRolLista metas={s.metas}/>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             {allDays.length===0?<Empty/>:(
               <div className="historial-grid">
               {[...allDays].reverse().map(d=>{
@@ -766,12 +804,23 @@ export default function App() {
                   subtitulo={`Semana del ${formatDate(wkStart)} al ${formatDate(addDays(wkStart,6))}`}/>
 
                 <div style={{...card,marginBottom:20}}>
-                  <SLabel>Antes de planificar — ¿qué necesita cada rol esta semana?</SLabel>
+                  <SLabel>Selección de metas por rol</SLabel>
+                  <div style={{fontSize:12,color:C.textMuted,marginTop:-8,marginBottom:14}}>Elegí 2-3 metas por rol para esta semana, antes de mirar cualquier pendiente.</div>
                   <div className="roles-grid">
                     {ROLES.map((r,i)=>(
-                      <div key={i} style={{display:"flex",gap:10,alignItems:"center",paddingBottom:i<ROLES.length-1?10:0,marginBottom:i<ROLES.length-1?10:0,borderBottom:i<ROLES.length-1?`1px solid ${C.border}`:"none"}}>
-                        <div style={{width:24,height:24,borderRadius:"50%",background:C.navy,color:C.white,fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{r.num}</div>
-                        <div style={{fontSize:13,color:C.textPrimary,fontWeight:500}}>{r.nombre}</div>
+                      <div key={r.num} style={{paddingBottom:i<ROLES.length-1?14:0,marginBottom:i<ROLES.length-1?14:0,borderBottom:i<ROLES.length-1?`1px solid ${C.border}`:"none"}}>
+                        <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:8}}>
+                          <div style={{width:24,height:24,borderRadius:"50%",background:C.navy,color:C.white,fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{r.num}</div>
+                          <div style={{fontSize:13,color:C.textPrimary,fontWeight:500}}>{r.nombre}</div>
+                        </div>
+                        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                          {[0,1,2].map(idx=>(
+                            <input key={idx} type="text" value={semanaForm.metas[r.num][idx]}
+                              onChange={e=>handleMetaChange(r.num, idx, e.target.value)}
+                              placeholder={idx===0?"Meta 1":`Meta ${idx+1} (opcional)`}
+                              style={{...inp,fontSize:13,padding:"8px 10px"}}/>
+                          ))}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -801,6 +850,12 @@ export default function App() {
                       return (
                         <div key={wk} style={{...card,marginBottom:12}}>
                           <div style={{fontSize:13,fontWeight:600,color:C.navy,marginBottom:12}}>Semana del {d}/{m}</div>
+                          {metasActivas(s.metas).length>0 && (
+                            <div style={{marginBottom:14,paddingBottom:14,borderBottom:`1px solid ${C.border}`}}>
+                              <div style={{fontSize:11,color:C.textMuted,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Metas por rol</div>
+                              <MetasRolLista metas={s.metas}/>
+                            </div>
+                          )}
                           {PREGUNTAS_SEMANA.map(p=>(
                             <div key={p.id} style={{marginBottom:10}}>
                               <div style={{fontSize:11,color:C.celeste,textTransform:"uppercase",letterSpacing:1,marginBottom:3}}>{p.pregunta.slice(0,45)}…</div>
@@ -1058,6 +1113,20 @@ function HomeRow({icon, label, estado, detalle, onClick}){
       </div>
       <span style={{fontSize:12,fontWeight:700,padding:"4px 12px",borderRadius:20,background:c.bg,color:c.text,flexShrink:0}}>{c.texto}</span>
     </button>
+  );
+}
+function MetasRolLista({metas}){
+  const activos = metasActivas(metas);
+  if(!activos.length) return <div style={{fontSize:12,color:C.textMuted,fontStyle:"italic"}}>Sin metas cargadas.</div>;
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+      {activos.map(r=>(
+        <div key={r.num} style={{display:"flex",gap:8,fontSize:13}}>
+          <span style={{color:C.celeste,fontWeight:600,minWidth:120,flexShrink:0}}>{r.nombre}</span>
+          <span style={{color:C.textSecond}}>{(metas[r.num]||[]).filter(v=>v&&v.trim()).join(" · ")}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 function Empty(){
