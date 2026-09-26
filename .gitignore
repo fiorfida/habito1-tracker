@@ -1,0 +1,10 @@
+# Dependencias (se reinstalan con npm install)
+node_modules/
+
+# Compilado (el deploy publica build/ en la rama gh-pages)
+build/
+
+# Varios
+.DS_Store
+*.log
+.env.local
