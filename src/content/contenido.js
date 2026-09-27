@@ -1,17 +1,21 @@
 // ─── Contenido fijo ────────────────────────────────────────────────────
-export const MISION = `Soy Facundo Iorfida y me comprometo a vivir una vida plena y alineada con lo que soy, lo que creo y lo que quiero lograr.
+export const MISION = `Soy Facundo Iorfida y soy dueño de mi vida: la vivo como yo defino, en base a lo que creo y valoro.
+
+Me guío por estos principios: libertad, honestidad, transparencia y servicio.
 
 Para eso, voy a:
 
-• Ser un padre presente y amoroso, acompañando a Francesca con el ejemplo, el amor y los valores necesarios para que crezca sana, feliz y libre.
+• Hacerme cargo de mis cosas: lo que está bajo mi control depende 100% de mis decisiones y mi actitud.
 • Ponerle pasión a todo lo que haga, disfrutar el proceso y estar presente de verdad, sin vivir a medias.
-• Apostar a mi crecimiento personal, conociéndome más, y cuidar mi cuerpo y mi mente, porque son la base de mi energía, claridad y mejor versión.
-• Valorar el esfuerzo y el laburo bien hecho, haciéndome cargo de mis decisiones y entendiendo que cada elección marca mi rumbo.
+• Ser un padre presente y amoroso, acompañando a Francesca con el amor y los valores necesarios para que crezca libre, sana, feliz y buena persona.
+• Apostar a mi crecimiento personal, conociéndome más, y cuidar mi cuerpo, mi mente y mi espíritu, porque son la base de mi energía, claridad y mejor versión.
 • Cuidar y nutrir mis relaciones, priorizando el amor, el respeto y el apoyo mutuo con Flo, mi familia y mis amigos.
-• Impactar positivamente en quienes me rodean, actuando con honestidad, escuchando con atención y dando siempre lo mejor de mí.
 • Construir mi libertad financiera y laboral, como base para vivir con autonomía y poder ayudar a otros con impacto.
 
-Elijo vivir con intención, sabiendo que cada día me da la chance de escribir una historia única.`;
+Elijo vivir con intención, sabiendo que cada día me da la chance de escribir una historia única y hacen que todo valga la pena.`;
+
+// La visión se muestra como imagen (public/vision.webp).
+export const VISION_ALT = "Visión personal a 5 años: familia, paternidad, trabajo, libertad financiera, familia extendida, amigos y comunidad, Racing.";
 
 // La identidad de cada rol es `num`: los registros guardan el número, nunca el nombre.
 export const ROLES = [
@@ -20,26 +24,95 @@ export const ROLES = [
   { num:"3", nombre:"Facundito",            desc:"Compañero, presente, que elige a Flo todos los días." },
   { num:"4", nombre:"Iorfida",              desc:"Hijo, nieto, tío de Josefina. Familia extensa unida." },
   { num:"5", nombre:"Iorfi/a",              desc:"Amigo presente que cultiva los vínculos con EPG, EC, Vi y Lu." },
-  { num:"6", nombre:"Lead Analyst Tecpetrol", desc:"Referente del área, liderazgo real, camino a Team Leader." },
+  { num:"6", nombre:"PLSC Specialist — Tecpetrol", desc:"Planning & Process SUCH · 2 reportes directos (Mati Y, Tincho P) · Mayor influencia; balance entre tareas de manager y de analista." },
   { num:"7", nombre:"Emprendedor",          desc:"Freelance (IJ, Yungo, Lubich) + proyecto inmobiliario Riglos." },
   { num:"8", nombre:"Referente CCBP",       desc:"Comunidad, organización, presencia deportiva y comisión." },
 ];
 
+// Citas con fuente primaria verificada (ver Fase 1). Se muestran frase + autor.
 export const FRASES = [
-  { habito:1, nombre:"Sea proactivo", texto:"Entre lo que te pasa y cómo respondés, hay un espacio: ahí se construye el papá, el socio y el líder que querés ser." },
-  { habito:1, nombre:"Sea proactivo", texto:"Hoy podés gastar energía en lo que no controlás, o invertirla en tu círculo de influencia: Francesca, Flo, tu equipo, Riglos." },
-  { habito:2, nombre:"Empiece con un fin en mente", texto:"Todo se crea dos veces: primero en tu cabeza, después en el día a día. ¿Qué estás creando hoy para tu familia y tu futuro?" },
-  { habito:2, nombre:"Empiece con un fin en mente", texto:"Tu misión no es un texto guardado: es el filtro con el que elegís en qué usar las próximas horas." },
-  { habito:3, nombre:"Primero lo primero", texto:"Lo urgente grita, lo importante espera en silencio. Hoy, ¿le diste lugar al Cuadrante II: tu cuerpo, Flo, Francesca, Riglos?" },
-  { habito:3, nombre:"Primero lo primero", texto:"No se trata de ordenar la agenda de tus prioridades, sino de priorizar lo que ponés en la agenda." },
-  { habito:4, nombre:"Piense en ganar/ganar", texto:"En Tecpetrol, con Flo, con tu equipo: buscá el resultado donde ganan los dos, no el que te deja solo arriba." },
-  { habito:4, nombre:"Piense en ganar/ganar", texto:"La mentalidad de abundancia dice que hay éxito de sobra para todos. Hoy, ¿elegiste competir o construir junto a otros?" },
-  { habito:5, nombre:"Procure primero comprender, y después ser comprendido", texto:"Antes de responder, escuchá para entender, no para contestar. Con Flo, con Josefina, con tu equipo." },
-  { habito:5, nombre:"Procure primero comprender, y después ser comprendido", texto:"Escuchar de verdad es el depósito más grande que podés hacer en la cuenta emocional de alguien." },
-  { habito:6, nombre:"Sinergice", texto:"La diferencia de mirada del otro no es un obstáculo: es la materia prima de una solución mejor a la que ibas a llegar solo." },
-  { habito:6, nombre:"Sinergice", texto:"Hoy buscá la tercera alternativa: ni tu idea, ni la del otro — la que todavía no apareció." },
-  { habito:7, nombre:"Afile la sierra", texto:"Cuerpo, mente, espíritu y vínculos: afilar la sierra en las cuatro te hace más efectivo en todo lo demás, no menos productivo." },
-  { habito:7, nombre:"Afile la sierra", texto:"No tenés tiempo para no afilar la sierra. Tu victoria privada de hoy sostiene la pública de mañana." },
+  { texto:"Al hombre se le puede arrebatar todo, salvo la última de las libertades humanas: elegir su actitud ante las circunstancias.", autor:"Viktor Frankl" },
+  { texto:"Cuando ya no podemos cambiar una situación, tenemos el desafío de cambiarnos a nosotros mismos.", autor:"Viktor Frankl" },
+  { texto:"Quien tiene un porqué para vivir soporta casi cualquier cómo.", autor:"Friedrich Nietzsche" },
+  { texto:"Hay mil que podan las ramas del mal por cada uno que golpea la raíz.", autor:"Henry David Thoreau" },
+  { texto:"No conozco hecho más alentador que la incuestionable capacidad del hombre para elevar su vida mediante el esfuerzo consciente.", autor:"Henry David Thoreau" },
+  { texto:"Las cadenas del hábito suelen ser demasiado livianas para sentirlas, hasta que son demasiado fuertes para romperlas.", autor:"Samuel Johnson" },
+  { texto:"El hábito es un cable: tejemos un hilo cada día y al final no podemos romperlo.", autor:"Horace Mann" },
+  { texto:"Si tratamos a las personas como son, las empeoramos; si las tratamos como lo que deberían ser, las llevamos adonde pueden llegar.", autor:"Goethe" },
+  { texto:"Lo que heredaste de tus padres, conquistalo para poseerlo.", autor:"Goethe" },
+  { texto:"El corazón tiene razones que la razón no conoce.", autor:"Blaise Pascal" },
+  { texto:"Mi vida es mi mensaje.", autor:"Mahatma Gandhi" },
+  { texto:"La pregunta más persistente y urgente de la vida es: ¿qué estás haciendo por los demás?", autor:"Martin Luther King Jr." },
+  { texto:"Tenés que hacer aquello que creés que no podés hacer.", autor:"Eleanor Roosevelt" },
+  { texto:"No nos perturban las cosas, sino las opiniones que tenemos sobre ellas.", autor:"Epicteto" },
+  { texto:"Primero decite qué querés ser; después hacé lo que tengas que hacer.", autor:"Epicteto" },
+  { texto:"Dejá de discutir cómo debe ser un hombre bueno: sé uno.", autor:"Marco Aurelio" },
+  { texto:"El alma se tiñe del color de sus pensamientos.", autor:"Marco Aurelio" },
+  { texto:"No es que tengamos poco tiempo, sino que perdemos mucho.", autor:"Séneca" },
+  { texto:"Ningún viento es favorable para quien no sabe a qué puerto va.", autor:"Séneca" },
+  { texto:"Mientras la postergamos, la vida pasa.", autor:"Séneca" },
+  { texto:"Una vida sin examen no merece ser vivida.", autor:"Sócrates" },
+  { texto:"Nos volvemos justos haciendo actos justos, moderados haciendo actos moderados, y valientes haciendo actos valientes.", autor:"Aristóteles" },
+  { texto:"Un viaje de mil millas empieza con un solo paso.", autor:"Lao Tsé" },
+  { texto:"Aprender sin pensar es inútil; pensar sin aprender es peligroso.", autor:"Confucio" },
+  { texto:"Soy el amo de mi destino, soy el capitán de mi alma.", autor:"William Ernest Henley" },
+  { texto:"El mérito es de quien está realmente en la arena.", autor:"Theodore Roosevelt" },
+  { texto:"Damos forma a nuestros edificios; después, ellos nos dan forma a nosotros.", autor:"Winston Churchill" },
+  { texto:"Bien hecho es mejor que bien dicho.", autor:"Benjamin Franklin" },
+  { texto:"Nada grande se logró jamás sin entusiasmo.", autor:"Ralph Waldo Emerson" },
+  { texto:"La vida es como andar en bicicleta: para mantener el equilibrio hay que seguir en movimiento.", autor:"Albert Einstein" },
+  { texto:"La vida es una aventura audaz o no es nada.", autor:"Helen Keller" },
+];
+
+// ─── Chispa interior (Superhábitos) ────────────────────────────────────
+export const CHISPA_DEFINICION = "La zona donde se cruzan mis pasiones (lo que amo hacer), mis talentos (lo que hago naturalmente bien y puedo desarrollar) y mis principios (lo que sé que es correcto y defiendo), puesta al servicio de necesidades de otros. Como hábito: usarla como criterio cada vez que decido dónde invertir mi tiempo y mi energía, incluidas las actividades puntuales de la semana.";
+export const CHISPA_PROPOSITO = "Al planificar: ¿esto lo hago yo, o lo delego a alguien más apto?";
+
+// Valores por defecto; lo editado se guarda en Firestore (config/chispa).
+export const CHISPA_DEFAULT = {
+  pasiones: [
+    "Estar con mi familia y amigos.",
+    "Competir (ej.: fútbol), crecer y desafiarme constantemente.",
+    "Leer y aprender (IA, automatización, tecnología).",
+    "Desarrollar y liderar un negocio propio.",
+    "Contribuir a mi comunidad, especialmente en Banco.",
+    "Analizar, planificar y mejorar procesos.",
+  ],
+  talentos: [
+    "Pensamiento estratégico y orientación a resultados.",
+    "Gestión y mejora de procesos (con y sin tecnología).",
+    "Escucha activa y sentido común aplicado.",
+    "Alta capacidad de análisis, planificación y organización.",
+    "Resiliencia, adaptabilidad y consistencia.",
+    "Conocimiento técnico en Supply Chain y tecnología aplicada.",
+  ],
+  principios: [
+    "Integridad, colaboración, y desarrollo personal.",
+    "Agregar valor real y ser útil a otros.",
+    "Familia, comunidad y ayudar cuando hace falta.",
+    "Disfrutar el camino, no solo la meta.",
+    "Hacer lo correcto, aunque no sea lo fácil.",
+  ],
+  necesidades: ["Digitalizar", "Eficiencia", "Automatizar", "Accesibilidad", "Reducir costos"],
+  imagen: "Consultor para optimizar procesos. Una empresa me contrata y yo: relevo, defino KPIs, planteo mejoras, implemento, hago seguimiento de resultados y sostengo la mejora continua.",
+  pesos: [3, 3, 3, 1, 1, 1],
+};
+
+export const CHISPA_BLOQUES = [
+  { id:"pasiones",    icono:"❤️", titulo:"Pasiones" },
+  { id:"talentos",    icono:"💪", titulo:"Talentos" },
+  { id:"principios",  icono:"🧭", titulo:"Principios" },
+  { id:"necesidades", icono:"🤝", titulo:"Necesidades que puedo ayudar a resolver" },
+];
+
+// Matriz de decisión: el peso de cada criterio vive en chispa.pesos (mismo orden).
+export const MATRIZ_CRITERIOS = [
+  "¿Me apasiona esta opción?",
+  "¿Aplica mis talentos naturales?",
+  "¿Respeta y refuerza mis principios?",
+  "¿Agrega valor real a otros?",
+  "¿Me hace crecer como persona?",
+  "¿Me permite vivir con disfrute?",
 ];
 
 export const PREGUNTAS_H1 = [

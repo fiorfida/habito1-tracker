@@ -1,5 +1,6 @@
 import { C, card, inp, lbl } from "../theme";
 import { PREGUNTAS_H1, PREGUNTA_H2 } from "../content/contenido";
+import { addDays, dayOfWeek, formatDate, nocheDisponible, NOCHE_DESDE } from "../lib/fechas";
 
 function SiNo({valor, onChange}){
   return (
@@ -11,16 +12,36 @@ function SiNo({valor, onChange}){
   );
 }
 
+const flecha = (activo) => ({
+  width:40,height:40,borderRadius:8,border:`1px solid ${C.border}`,background:activo?C.surface:C.surfaceAlt,
+  color:activo?C.navy:C.textMuted,fontSize:16,cursor:activo?"pointer":"default",fontFamily:"inherit",flexShrink:0,
+});
+
 export default function Noche({form, setForm, today, registros, onGuardar, savedNoche}){
   const completo = form.p1!==null&&form.p2!==null&&form.p3!==null&&form.p4!==null;
+  const esHoy = form.fecha===today;
+  const bloqueada = !nocheDisponible(form.fecha) && !registros[form.fecha];
+  const irA = f => setForm({...form, fecha:f});
   return (
     <div>
       <div style={{marginBottom:18}}>
         <label style={lbl}>Fecha del registro</label>
-        <input type="date" value={form.fecha} max={today}
-          onChange={e=>setForm({...form,fecha:e.target.value})} style={inp}/>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <button onClick={()=>irA(addDays(form.fecha,-1))} style={flecha(true)} aria-label="Día anterior">◀</button>
+          <div style={{...inp,flex:1,textAlign:"center",fontWeight:600}}>{dayOfWeek(form.fecha)} {formatDate(form.fecha)}</div>
+          <button onClick={()=>!esHoy&&irA(addDays(form.fecha,1))} disabled={esHoy} style={flecha(!esHoy)} aria-label="Día siguiente">▶</button>
+          {!esHoy && <button onClick={()=>irA(today)} style={{...flecha(true),width:"auto",padding:"0 12px",fontSize:13,fontWeight:600}}>Hoy</button>}
+        </div>
         {registros[form.fecha] && <div style={{marginTop:6,fontSize:12,color:C.celeste}}>✏️ Ya tenés un registro para este día — podés editarlo.</div>}
       </div>
+
+      {bloqueada ? (
+        <div style={{...card,background:C.surfaceAlt,textAlign:"center",padding:"32px 16px"}}>
+          <div style={{fontSize:28,marginBottom:8}}>🌙</div>
+          <div style={{fontSize:15,fontWeight:600,color:C.textSecond}}>Disponible desde las {NOCHE_DESDE}:00</div>
+          <div style={{fontSize:12,color:C.textMuted,marginTop:6}}>El check-in de hoy se habilita a la noche. Con ◀ podés completar días anteriores.</div>
+        </div>
+      ) : (<>
 
       <div style={{fontSize:11,letterSpacing:2,color:C.textMuted,textTransform:"uppercase",marginBottom:10}}>Hábito 1 — Sea Proactivo</div>
       {PREGUNTAS_H1.map(p=>(
@@ -50,6 +71,7 @@ export default function Noche({form, setForm, today, registros, onGuardar, saved
         style={{width:"100%",padding:14,borderRadius:10,border:"none",background:completo?C.navy:C.surfaceAlt,color:completo?C.white:C.textMuted,fontSize:15,fontFamily:"inherit",fontWeight:600,cursor:"pointer",transition:"all 0.2s"}}>
         {savedNoche?"✓ Guardado y sincronizado":"Guardar registro del día"}
       </button>
+      </>)}
     </div>
   );
 }

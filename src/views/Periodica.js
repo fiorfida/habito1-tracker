@@ -3,6 +3,7 @@ import { SLabel, EstadoBanner, MetasRolLista } from "../components/ui";
 import { ROLES, PREGUNTAS_SEMANA, PREGUNTAS_TRIMESTRE, PREGUNTAS_ANUAL } from "../content/contenido";
 import { formatDate, addDays } from "../lib/fechas";
 import { metasActivas } from "../lib/metas";
+import { ChispaResumen, ChispaVista } from "../components/Chispa";
 
 export default function Periodica(props){
   const { sub, setSub, semanaEstado, trimEstado, anualEstado } = props;
@@ -13,9 +14,10 @@ export default function Periodica(props){
           {id:"semanal",    label:"Semanal",    pend:semanaEstado!=="completada"},
           {id:"trimestral", label:"Trimestral", pend:trimEstado!=="completada"},
           {id:"anual",      label:"Anual",      pend:anualEstado!=="completada"},
+          {id:"chispa",     label:"🔥 Chispa",  pend:false},
         ].map(s=>(
           <button key={s.id} onClick={()=>setSub(s.id)} style={{
-            flex:1,position:"relative",padding:"10px 8px",borderRadius:8,border:"none",cursor:"pointer",
+            flex:1,position:"relative",padding:"10px 4px",borderRadius:8,border:"none",cursor:"pointer",whiteSpace:"nowrap",
             background:sub===s.id?C.navy:"transparent",
             color:sub===s.id?C.white:C.textSecond,
             fontSize:13,fontFamily:"inherit",fontWeight:600,transition:"all 0.2s",
@@ -25,6 +27,10 @@ export default function Periodica(props){
           </button>
         ))}
       </div>
+
+      {(sub==="trimestral"||sub==="anual") && <ChispaResumen chispa={props.chispa} onAbrir={()=>setSub("chispa")}/>}
+
+      {sub==="chispa" && <ChispaVista chispa={props.chispa} onGuardar={props.onGuardarChispa}/>}
 
       {sub==="semanal" && <Semanal {...props}/>}
 
@@ -112,10 +118,9 @@ function Semanal({semanaEstado, wkStart, semanaForm, setSemanaForm, onMetaChange
           <SLabel>Reflexiones anteriores</SLabel>
           {Object.keys(semanaLog).sort((a,b)=>b.localeCompare(a)).map(wk=>{
             const s=semanaLog[wk];
-            const [,m,d]=wk.split("-");
             return (
               <div key={wk} style={{...card,marginBottom:12}}>
-                <div style={{fontSize:13,fontWeight:600,color:C.navy,marginBottom:12}}>Semana del {d}/{m}</div>
+                <div style={{fontSize:13,fontWeight:600,color:C.navy,marginBottom:12}}>Semana del {formatDate(wk)}</div>
                 {metasActivas(s.metas).length>0 && (
                   <div style={{marginBottom:14,paddingBottom:14,borderBottom:`1px solid ${C.border}`}}>
                     <div style={{fontSize:11,color:C.textMuted,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Metas por rol</div>

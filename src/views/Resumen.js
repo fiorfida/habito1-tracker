@@ -70,20 +70,19 @@ export default function Resumen({stats, registros, semanaLog, trimestreLog, anua
           {weekKeys.map(wk=>{
             const days=weekGroups[wk];
             const pct=weekScore(days);
-            const [,m,d]=wk.split("-");
             return (
               <div key={wk} style={{marginBottom:18}}>
                 <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-                  <span style={{fontSize:13,color:C.textSecond,fontWeight:500}}>Semana del {d}/{m}</span>
+                  <span style={{fontSize:13,color:C.textSecond,fontWeight:500}}>Semana del {formatDate(wk)}</span>
                   <span style={{fontSize:13,color:C.textMuted}}>
-                    {days.filter(d=>registros[d]).length}/{days.length} días
+                    {days.some(d=>d<today||registros[d])?`${days.filter(d=>registros[d]).length}/${days.filter(d=>d<today||registros[d]).length} días`:"en curso"}
                     {pct!==null&&<span style={{marginLeft:6,fontWeight:700,color:scoreColor(pct)}}>{pct}%</span>}
                   </span>
                 </div>
                 {pct!==null&&<div style={{height:6,background:C.surfaceAlt,borderRadius:3,overflow:"hidden",marginBottom:8}}><div style={{height:"100%",width:pct+"%",background:scoreColor(pct),borderRadius:3}}/></div>}
                 <div style={{display:"flex",gap:5}}>
                   {days.map(d=>(
-                    <div key={d} title={`${dayOfWeek(d)} ${formatDate(d)}`} style={{width:10,height:10,borderRadius:"50%",background:d>today?"transparent":dotColor(registros[d]),border:d>today?"none":`1px solid ${dotColor(registros[d])}`,flexShrink:0}}/>
+                    <div key={d} title={`${dayOfWeek(d)} ${formatDate(d)}`} style={{width:10,height:10,borderRadius:"50%",background:(d>today||(d===today&&!registros[d]))?"transparent":dotColor(registros[d]),border:d>today?"none":`1px ${d===today&&!registros[d]?"dashed":"solid"} ${dotColor(registros[d])}`,flexShrink:0}}/>
                   ))}
                 </div>
               </div>

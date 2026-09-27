@@ -6,6 +6,15 @@ export const TZ = "America/Argentina/Buenos_Aires";
 export function todayBsAs() {
   return new Date().toLocaleDateString("en-CA", { timeZone: TZ });
 }
+// Hora actual en Buenos Aires (0-23).
+export function horaBsAs() {
+  return parseInt(new Date().toLocaleString("en-US", { timeZone: TZ, hour: "numeric", hourCycle: "h23" }), 10);
+}
+// El check-in nocturno de hoy se habilita a esta hora; los días anteriores siempre.
+export const NOCHE_DESDE = 19;
+export function nocheDisponible(ds) {
+  return ds < todayBsAs() || horaBsAs() >= NOCHE_DESDE;
+}
 export function formatDate(ds) {
   const [y,m,d] = ds.split("-"); return `${d}/${m}/${y}`;
 }
