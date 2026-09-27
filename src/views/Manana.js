@@ -1,6 +1,6 @@
 import { C, card, btnPrimario } from "../theme";
 import { SLabel } from "../components/ui";
-import { MISION, ROLES } from "../content/contenido";
+import { MISION, VISION_ALT, ROLES } from "../content/contenido";
 
 export default function Manana({mananHoy, frase, onMarcar}){
   return (
@@ -11,8 +11,8 @@ export default function Manana({mananHoy, frase, onMarcar}){
       </div>
 
       <div style={{...card,background:C.celestePale,border:`1px solid ${C.celeste}`,marginBottom:20}}>
-        <div style={{fontSize:11,letterSpacing:2,color:C.celeste,textTransform:"uppercase",marginBottom:8}}>Hábito {frase.habito} — {frase.nombre}</div>
         <div style={{fontSize:15,fontStyle:"italic",color:C.navy,lineHeight:1.6}}>"{frase.texto}"</div>
+        <div style={{fontSize:13,color:C.celeste,fontWeight:600,marginTop:8,textAlign:"right"}}>— {frase.autor}</div>
       </div>
 
       <div style={card}>
@@ -22,7 +22,7 @@ export default function Manana({mananHoy, frase, onMarcar}){
 
       <div style={card}>
         <SLabel>✦ Visión Personal — 5 años</SLabel>
-        <img src={`${process.env.PUBLIC_URL}/vision.jpg`} alt="Visión personal a 5 años"
+        <img src={`${process.env.PUBLIC_URL}/vision.webp`} alt={VISION_ALT}
           style={{width:"100%",height:"auto",display:"block",borderRadius:8}}/>
       </div>
 

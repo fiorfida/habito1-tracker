@@ -1,11 +1,11 @@
 import { C, card, scoreColor, dotColor } from "../theme";
 import { SLabel, MetasRolLista, Empty } from "../components/ui";
 import { PREGUNTAS_H1, PREGUNTA_H2 } from "../content/contenido";
-import { formatDate, dayOfWeek } from "../lib/fechas";
+import { formatDate, dayOfWeek, NOCHE_DESDE } from "../lib/fechas";
 import { metasActivas } from "../lib/metas";
 
-export default function Historial({stats, registros, mananaLog, semanaLog, today}){
-  const { allDays, tracked, totalDays, mananasHechas, consistency } = stats;
+export default function Historial({stats, registros, mananaLog, semanaLog, today, nocheDisp}){
+  const { allDays, tracked, totalNoche, totalManana, mananasHechas, consistency } = stats;
   const semanasConMetas = Object.keys(semanaLog).filter(wk=>metasActivas(semanaLog[wk].metas).length>0);
   return (
     <div>
@@ -13,8 +13,8 @@ export default function Historial({stats, registros, mananaLog, semanaLog, today
         <div style={{...card,display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
           <div>
             <div style={{fontSize:11,letterSpacing:2,color:C.textMuted,textTransform:"uppercase"}}>Consistencia</div>
-            <div style={{fontSize:13,color:C.textSecond,marginTop:2}}>{tracked.length} de {totalDays} días registrados</div>
-            <div style={{fontSize:13,color:C.textSecond,marginTop:2}}>{mananasHechas} de {totalDays} mañanas completadas</div>
+            <div style={{fontSize:13,color:C.textSecond,marginTop:2}}>{tracked.length} de {totalNoche} días registrados</div>
+            <div style={{fontSize:13,color:C.textSecond,marginTop:2}}>{mananasHechas} de {totalManana} mañanas completadas</div>
           </div>
           <div style={{fontSize:28,fontWeight:700,color:scoreColor(consistency)}}>{consistency}%</div>
         </div>
@@ -24,10 +24,9 @@ export default function Historial({stats, registros, mananaLog, semanaLog, today
           <SLabel>Metas semanales por rol</SLabel>
           {semanasConMetas.sort((a,b)=>b.localeCompare(a)).map(wk=>{
             const s=semanaLog[wk];
-            const [,m,d]=wk.split("-");
             return (
               <div key={wk} style={{...card,marginBottom:10}}>
-                <div style={{fontSize:13,fontWeight:600,color:C.navy,marginBottom:8}}>Semana del {d}/{m}</div>
+                <div style={{fontSize:13,fontWeight:600,color:C.navy,marginBottom:8}}>Semana del {formatDate(wk)}</div>
                 <MetasRolLista metas={s.metas}/>
               </div>
             );
@@ -55,7 +54,7 @@ export default function Historial({stats, registros, mananaLog, semanaLog, today
                       <span style={{fontSize:12,fontWeight:700,padding:"3px 10px",borderRadius:20,background:C.celestePale,color:C.celeste}}>H1: {h1Score}/3</span>
                       {r.p4!==undefined&&<span style={{fontSize:12,fontWeight:700,padding:"3px 10px",borderRadius:20,background:r.p4?C.yesBg:C.noBg,color:r.p4?C.yes:C.no}}>H2: {r.p4?"SÍ":"NO"}</span>}
                     </>
-                  ):<span style={{fontSize:12,color:C.textMuted,fontStyle:"italic"}}>sin registro noche</span>}
+                  ):<span style={{fontSize:12,color:C.textMuted,fontStyle:"italic"}}>{d!==today?"sin registro noche":nocheDisp?"Noche pendiente":`Noche disponible desde las ${NOCHE_DESDE}:00`}</span>}
                 </div>
               </div>
               {r&&(

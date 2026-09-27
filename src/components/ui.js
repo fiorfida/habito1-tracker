@@ -24,6 +24,7 @@ export function HomeRow({icon, label, estado, detalle, onClick}){
     pendiente:  {bg:C.warnBg, text:C.warn, texto:"Pendiente"},
     vencida:    {bg:C.noBg,   text:C.no,   texto:"Vencida"},
     completada: {bg:C.yesBg,  text:C.yes,  texto:"✓ Listo"},
+    neutral:    {bg:C.surfaceAlt, text:C.textMuted, texto:"Desde 19:00"},
   };
   const c = colores[estado];
   return (

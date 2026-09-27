@@ -4,9 +4,10 @@ import "./responsive.css";
 
 import { C } from "./theme";
 import { Escudo, AvisoSync } from "./components/ui";
-import { todayBsAs, relevantWeekStart, dateRange, trimestralStatus, anualStatus, formatDate } from "./lib/fechas";
+import { todayBsAs, relevantWeekStart, dateRange, trimestralStatus, anualStatus, formatDate, nocheDisponible } from "./lib/fechas";
 import { emptyMetas, mergeMetas } from "./lib/metas";
 import { fraseDelDia } from "./lib/frases";
+import { CHISPA_DEFAULT } from "./content/contenido";
 import {
   KEY_NOCHE, KEY_MANANA, KEY_SEMANA, KEY_TRIMESTRE, KEY_ANUAL,
   fbGet, fbSet, fbDelete, migrarSemanaLog, leerPendientes, escribirPendientes, descargarBackup,
@@ -31,6 +32,8 @@ export default function App() {
   const [semanaLog,   setSemanaLog]   = useState({});
   const [trimestreLog,setTrimestreLog]= useState({});
   const [anualLog,    setAnualLog]    = useState({});
+  const [chispaCfg,   setChispaCfg]   = useState(null); // lo guardado en config/chispa (null = usar valores por defecto)
+  const [, setReloj] = useState(0); // re-render cada minuto: habilita la Noche a las 19:00 y cambia de día a medianoche
 
   const [errorCarga,   setErrorCarga]   = useState(null);
   const [pendientes,   setPendientes]   = useState(leerPendientes);
@@ -55,17 +58,24 @@ export default function App() {
     return unsub;
   }, []);
 
+  // ── Reloj ──
+  useEffect(() => {
+    const id = setInterval(() => setReloj(n => n+1), 60000);
+    return () => clearInterval(id);
+  }, []);
+
   // ── Load data when user logs in ──
   const loadFromFirebase = useCallback(async (uid) => {
     setSyncing(true);
-    const [r, m, s, t, a] = await Promise.all([
+    const [r, m, s, t, a, cfg] = await Promise.all([
       fbGet(uid, "noche"),
       fbGet(uid, "manana"),
       fbGet(uid, "semana"),
       fbGet(uid, "trimestre"),
       fbGet(uid, "anual"),
+      fbGet(uid, "config"),
     ]);
-    const fallidas = [["Noche",r],["Mañana",m],["Semanal",s],["Trimestral",t],["Anual",a]]
+    const fallidas = [["Noche",r],["Mañana",m],["Semanal",s],["Trimestral",t],["Anual",a],["Configuración",cfg]]
       .filter(([,v])=>v===null).map(([n])=>n);
     setErrorCarga(fallidas.length ? fallidas : null);
     if (r) { setRegistros(r); try { localStorage.setItem(KEY_NOCHE,  JSON.stringify(r)); } catch {} }
@@ -83,6 +93,7 @@ export default function App() {
     }
     if (t) { setTrimestreLog(t); try { localStorage.setItem(KEY_TRIMESTRE, JSON.stringify(t)); } catch {} }
     if (a) { setAnualLog(a); try { localStorage.setItem(KEY_ANUAL, JSON.stringify(a)); } catch {} }
+    if (cfg) setChispaCfg(cfg.chispa || null);
     setSyncing(false);
   }, []);
 
@@ -248,6 +259,13 @@ export default function App() {
     if (await persistAnual(updated)) flashGuardado(setSavedAnual);
   };
 
+  // Guarda cambios parciales de la chispa (contenido o pesos) en config/chispa.
+  const handleGuardarChispa = async (cambios) => {
+    const nueva = {...chispa, ...cambios};
+    setChispaCfg(nueva);
+    return guardarNube("config", "chispa", {chispa:nueva}, "Chispa interior");
+  };
+
   // ── Computed ──
   const today       = todayBsAs();
   const allDates    = [...new Set([...Object.keys(registros), ...Object.keys(mananaLog)])].sort();
@@ -255,13 +273,17 @@ export default function App() {
   const allDays     = dateRange(firstDate, today);
   const tracked     = allDays.filter(d=>registros[d]);
   const missed      = allDays.filter(d=>!registros[d]&&d!==today);
-  const totalDays   = allDays.length;
-  const consistency = totalDays>0?Math.round((tracked.length/totalDays)*100):0;
+  // Hoy solo cuenta si ya se hizo: el día no es "incumplido" hasta que termina.
+  const totalNoche  = allDays.filter(d=>d<today||registros[d]).length;
+  const totalManana = allDays.filter(d=>d<today||mananaLog[d]?.visto).length;
+  const consistency = totalNoche>0?Math.round((tracked.length/totalNoche)*100):0;
   const mananasHechas = allDays.filter(d=>mananaLog[d]?.visto).length;
-  const stats = { allDays, tracked, missed, totalDays, consistency, mananasHechas };
+  const stats = { allDays, tracked, missed, totalNoche, totalManana, consistency, mananasHechas };
   const mananHoy    = !!(mananaLog[today]);
   const nocheHoy    = !!(registros[today]);
+  const nocheDisp   = nocheDisponible(today);
   const frase       = fraseDelDia();
+  const chispa      = {...CHISPA_DEFAULT, ...(chispaCfg||{})};
 
   const wkStart      = relevantWeekStart(today);
   const semanaHecha  = !!(semanaLog[wkStart]);
@@ -279,9 +301,9 @@ export default function App() {
   const periodicaPendiente = semanaEstado!=="completada"||trimEstado!=="completada"||anualEstado!=="completada";
 
   const badges = {
-    home:      (!mananHoy||!nocheHoy||periodicaPendiente)?1:0,
+    home:      (!mananHoy||(nocheDisp&&!nocheHoy)||periodicaPendiente)?1:0,
     manana:    mananHoy?0:1,
-    noche:     nocheHoy?0:1,
+    noche:     (nocheDisp&&!nocheHoy)?1:0,
     periodica: periodicaPendiente?1:0,
   };
 
@@ -359,7 +381,7 @@ export default function App() {
         <AvisoSync errorCarga={errorCarga} pendientes={pendientes} reintentando={reintentando} onReintentar={handleReintentar}/>
 
         {view==="home" && (
-          <Home today={today} mananHoy={mananHoy} nocheHoy={nocheHoy}
+          <Home today={today} mananHoy={mananHoy} nocheHoy={nocheHoy} nocheDisp={nocheDisp}
             semanaEstado={semanaEstado} trimEstado={trimEstado} anualEstado={anualEstado} irA={irA}/>
         )}
 
@@ -371,7 +393,7 @@ export default function App() {
         )}
 
         {view==="historial" && (
-          <Historial stats={stats} registros={registros} mananaLog={mananaLog} semanaLog={semanaLog} today={today}/>
+          <Historial stats={stats} registros={registros} mananaLog={mananaLog} semanaLog={semanaLog} today={today} nocheDisp={nocheDisp}/>
         )}
 
         {view==="periodica" && (
@@ -382,7 +404,8 @@ export default function App() {
             trimInfo={trimInfo} trimestreForm={trimestreForm} setTrimestreForm={setTrimestreForm}
             onGuardarTrimestre={handleGuardarTrimestre} savedTrimestre={savedTrimestre} trimestreLog={trimestreLog}
             anualInfo={anualInfo} anualForm={anualForm} setAnualForm={setAnualForm}
-            onGuardarAnual={handleGuardarAnual} savedAnual={savedAnual} anualLog={anualLog}/>
+            onGuardarAnual={handleGuardarAnual} savedAnual={savedAnual} anualLog={anualLog}
+            chispa={chispa} onGuardarChispa={handleGuardarChispa}/>
         )}
 
         {view==="resumen" && (

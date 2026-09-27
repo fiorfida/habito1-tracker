@@ -10,7 +10,7 @@ export const KEY_TRIMESTRE  = "habito1_trimestre";
 export const KEY_ANUAL      = "habito1_anual";
 export const KEY_PENDIENTES = "habito1_pendientes_sync";
 
-export const COLECCIONES = ["noche", "manana", "semana", "trimestre", "anual"];
+export const COLECCIONES = ["noche", "manana", "semana", "trimestre", "anual", "config"];
 
 // ─── Firestore ─────────────────────────────────────────────────────────
 // Devuelve null si falla (el llamador decide cómo avisar).

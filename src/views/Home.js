@@ -2,7 +2,7 @@ import { C } from "../theme";
 import { SLabel, HomeRow } from "../components/ui";
 import { dayOfWeek, formatDate } from "../lib/fechas";
 
-export default function Home({today, mananHoy, nocheHoy, semanaEstado, trimEstado, anualEstado, irA}){
+export default function Home({today, mananHoy, nocheHoy, nocheDisp,semanaEstado, trimEstado, anualEstado, irA}){
   return (
     <div>
       <div style={{fontSize:11,letterSpacing:2,color:C.textMuted,textTransform:"uppercase",marginBottom:14}}>{dayOfWeek(today)} {formatDate(today)}</div>
@@ -11,8 +11,8 @@ export default function Home({today, mananHoy, nocheHoy, semanaEstado, trimEstad
         <HomeRow icon="☀️" label="Mañana" estado={mananHoy?"completada":"pendiente"}
           detalle={mananHoy?"Misión, visión y roles leídos hoy.":"Todavía no la hiciste hoy."}
           onClick={()=>irA("manana")}/>
-        <HomeRow icon="🌙" label="Noche" estado={nocheHoy?"completada":"pendiente"}
-          detalle={nocheHoy?"Registro del día guardado.":"Falta tu reflexión nocturna."}
+        <HomeRow icon="🌙" label="Noche" estado={nocheHoy?"completada":nocheDisp?"pendiente":"neutral"}
+          detalle={nocheHoy?"Registro del día guardado.":nocheDisp?"Falta tu reflexión nocturna.":"Se habilita a la noche."}
           onClick={()=>irA("noche")}/>
       </div>
 
