@@ -5,12 +5,12 @@ import "./responsive.css";
 import { C } from "./theme";
 import { Escudo, AvisoSync } from "./components/ui";
 import { todayBsAs, relevantWeekStart, dateRange, trimestralStatus, anualStatus, formatDate, nocheDisponible } from "./lib/fechas";
-import { emptyMetas, mergeMetas } from "./lib/metas";
 import { fraseDelDia } from "./lib/frases";
+import { semanaPlanDe, esV2, revisionCompleta } from "./lib/semanal";
 import { CHISPA_DEFAULT } from "./content/contenido";
 import {
   KEY_NOCHE, KEY_MANANA, KEY_SEMANA, KEY_TRIMESTRE, KEY_ANUAL,
-  fbGet, fbSet, fbDelete, migrarSemanaLog, leerPendientes, escribirPendientes, descargarBackup,
+  fbGet, fbSet, leerPendientes, escribirPendientes, descargarBackup, nuevoId,
 } from "./lib/datos";
 
 import Login from "./views/Login";
@@ -32,6 +32,8 @@ export default function App() {
   const [semanaLog,   setSemanaLog]   = useState({});
   const [trimestreLog,setTrimestreLog]= useState({});
   const [anualLog,    setAnualLog]    = useState({});
+  const [planLog,     setPlanLog]     = useState({}); // plan/{domingo de la semana planificada}
+  const [todos,       setTodos]       = useState({}); // pendientes (To Do's)
   const [chispaCfg,   setChispaCfg]   = useState(null); // lo guardado en config/chispa (null = usar valores por defecto)
   const [, setReloj] = useState(0); // re-render cada minuto: habilita la Noche a las 19:00 y cambia de día a medianoche
 
@@ -44,8 +46,6 @@ export default function App() {
     fecha:todayBsAs(), p1:null,p1_nota:"",p2:null,p2_nota:"",p3:null,p3_nota:"",p4:null,p4_nota:"",
   });
   const [savedNoche,  setSavedNoche]  = useState(false);
-  const [semanaForm,  setSemanaForm]  = useState({s1:"",s2:"",s3:"",metas:emptyMetas()});
-  const [savedSemana, setSavedSemana] = useState(false);
   const [trimestreForm,  setTrimestreForm]  = useState({t1:"",t2:"",t3:""});
   const [savedTrimestre, setSavedTrimestre] = useState(false);
   const [anualForm,      setAnualForm]      = useState({a1:"",a2:"",a3:"",a4:""});
@@ -67,33 +67,27 @@ export default function App() {
   // ── Load data when user logs in ──
   const loadFromFirebase = useCallback(async (uid) => {
     setSyncing(true);
-    const [r, m, s, t, a, cfg] = await Promise.all([
+    const [r, m, s, t, a, cfg, pl, td] = await Promise.all([
       fbGet(uid, "noche"),
       fbGet(uid, "manana"),
       fbGet(uid, "semana"),
       fbGet(uid, "trimestre"),
       fbGet(uid, "anual"),
       fbGet(uid, "config"),
+      fbGet(uid, "plan"),
+      fbGet(uid, "pendientes"),
     ]);
-    const fallidas = [["Noche",r],["Mañana",m],["Semanal",s],["Trimestral",t],["Anual",a],["Configuración",cfg]]
+    const fallidas = [["Noche",r],["Mañana",m],["Semanal",s],["Trimestral",t],["Anual",a],["Configuración",cfg],["Plan",pl],["Pendientes",td]]
       .filter(([,v])=>v===null).map(([n])=>n);
     setErrorCarga(fallidas.length ? fallidas : null);
     if (r) { setRegistros(r); try { localStorage.setItem(KEY_NOCHE,  JSON.stringify(r)); } catch {} }
     if (m) { setMananaLog(m); try { localStorage.setItem(KEY_MANANA, JSON.stringify(m)); } catch {} }
-    if (s) {
-      const { migrated, cambios } = migrarSemanaLog(s);
-      setSemanaLog(migrated);
-      try { localStorage.setItem(KEY_SEMANA, JSON.stringify(migrated)); } catch {}
-      for (const {antes,despues} of cambios) {
-        try {
-          await fbSet(uid, "semana", despues, migrated[despues]);
-          await fbDelete(uid, "semana", antes);
-        } catch(e) { console.error("migración semana:", e); }
-      }
-    }
+    if (s) { setSemanaLog(s); try { localStorage.setItem(KEY_SEMANA, JSON.stringify(s)); } catch {} }
     if (t) { setTrimestreLog(t); try { localStorage.setItem(KEY_TRIMESTRE, JSON.stringify(t)); } catch {} }
     if (a) { setAnualLog(a); try { localStorage.setItem(KEY_ANUAL, JSON.stringify(a)); } catch {} }
     if (cfg) setChispaCfg(cfg.chispa || null);
+    if (pl) setPlanLog(pl);
+    if (td) setTodos(td);
     setSyncing(false);
   }, []);
 
@@ -105,12 +99,7 @@ export default function App() {
       try {
         const r = localStorage.getItem(KEY_NOCHE);  if (r) setRegistros(JSON.parse(r));
         const m = localStorage.getItem(KEY_MANANA); if (m) setMananaLog(JSON.parse(m));
-        const s = localStorage.getItem(KEY_SEMANA);
-        if (s) {
-          const { migrated } = migrarSemanaLog(JSON.parse(s));
-          setSemanaLog(migrated);
-          try { localStorage.setItem(KEY_SEMANA, JSON.stringify(migrated)); } catch {}
-        }
+        const s = localStorage.getItem(KEY_SEMANA); if (s) setSemanaLog(JSON.parse(s));
         const t = localStorage.getItem(KEY_TRIMESTRE); if (t) setTrimestreLog(JSON.parse(t));
         const a = localStorage.getItem(KEY_ANUAL);     if (a) setAnualLog(JSON.parse(a));
       } catch {}
@@ -127,14 +116,6 @@ export default function App() {
       setForm(f => ({...f, p1:null,p1_nota:"",p2:null,p2_nota:"",p3:null,p3_nota:"",p4:null,p4_nota:""}));
     }
   }, [form.fecha, registros]);
-
-  // ── Pre-fill semana form ──
-  useEffect(() => {
-    const wk = relevantWeekStart(todayBsAs());
-    const s = semanaLog[wk];
-    if (s) setSemanaForm({s1:s.s1??"",s2:s.s2??"",s3:s.s3??"",metas:mergeMetas(s.metas)});
-    else setSemanaForm({s1:"",s2:"",s3:"",metas:emptyMetas()});
-  }, [semanaLog]);
 
   // ── Pre-fill trimestre form ──
   useEffect(() => {
@@ -199,12 +180,6 @@ export default function App() {
     const t = todayBsAs();
     return guardarNube("manana", t, data[t], `Mañana ${formatDate(t)}`);
   };
-  const persistSemana = async (data) => {
-    setSemanaLog(data);
-    try { localStorage.setItem(KEY_SEMANA, JSON.stringify(data)); } catch {}
-    const wk = relevantWeekStart(todayBsAs());
-    return guardarNube("semana", wk, data[wk], `Semanal ${formatDate(wk)}`);
-  };
   const persistTrimestre = async (data) => {
     setTrimestreLog(data);
     try { localStorage.setItem(KEY_TRIMESTRE, JSON.stringify(data)); } catch {}
@@ -237,14 +212,29 @@ export default function App() {
     await persistManana(updated);
   };
 
-  const handleGuardarSemana = async () => {
-    const wk = relevantWeekStart(todayBsAs());
-    const updated = {...semanaLog, [wk]:{...semanaForm, ts:todayBsAs()}};
-    if (await persistSemana(updated)) flashGuardado(setSavedSemana);
+  // Revisión semanal: guarda semana/{W} (revisión) y plan/{P} (plan) juntos.
+  const handleGuardarRevision = async (rev, plan) => {
+    const W = relevantWeekStart(todayBsAs()), P = semanaPlanDe(W);
+    setSemanaLog(prev => { const next = {...prev, [W]:rev}; try { localStorage.setItem(KEY_SEMANA, JSON.stringify(next)); } catch {} return next; });
+    setPlanLog(prev => ({...prev, [P]:plan}));
+    const [a, b] = await Promise.all([
+      guardarNube("semana", W, rev, `Revisión semanal ${formatDate(W)}`),
+      guardarNube("plan", P, plan, `Plan semana ${formatDate(P)}`),
+    ]);
+    return a && b;
   };
 
-  const handleMetaChange = (roleNum, idx, value) => {
-    setSemanaForm(f => ({...f, metas:{...f.metas, [roleNum]: f.metas[roleNum].map((v,i)=>i===idx?value:v)}}));
+  // Pendientes (To Do's).
+  const handleAgregarTodo = async (texto, rol) => {
+    const id = nuevoId();
+    const t = { texto, rol, estado:"abierto", creado:todayBsAs() };
+    setTodos(prev => ({...prev, [id]:t}));
+    return guardarNube("pendientes", id, t, `Pendiente "${texto.length>30?texto.slice(0,30)+"…":texto}"`);
+  };
+  const handleTodo = async (id, cambios) => {
+    const t = {...todos[id], ...cambios, actualizado:todayBsAs()};
+    setTodos(prev => ({...prev, [id]:{...prev[id], ...cambios}}));
+    return guardarNube("pendientes", id, t, `Pendiente "${(t.texto||"").length>30?t.texto.slice(0,30)+"…":(t.texto||"")}"`);
   };
 
   const handleGuardarTrimestre = async () => {
@@ -285,10 +275,13 @@ export default function App() {
   const frase       = fraseDelDia();
   const chispa      = {...CHISPA_DEFAULT, ...(chispaCfg||{})};
 
-  const wkStart      = relevantWeekStart(today);
-  const semanaHecha  = !!(semanaLog[wkStart]);
-  const semanaVentanaAbierta = new Date(today+"T12:00:00").getDay()===6;
-  const semanaEstado = semanaHecha?"completada":(semanaVentanaAbierta?"pendiente":"vencida");
+  // Semanal: nunca "vencida" (la herramienta es sierva, no ama).
+  const W            = relevantWeekStart(today);
+  const P            = semanaPlanDe(W);
+  const revW         = semanaLog[W];
+  const esSabado     = new Date(today+"T12:00:00").getDay()===6;
+  const semanaEstado = revisionCompleta(revW) ? "completada"
+    : esV2(revW) ? "encurso" : esSabado ? "hoy" : "espera";
 
   const trimInfo    = trimestralStatus(today);
   const trimHecho   = !!(trimestreLog[trimInfo.key]);
@@ -298,7 +291,7 @@ export default function App() {
   const anualHecho  = !!(anualLog[anualInfo.key]);
   const anualEstado = anualHecho?"completada":(anualInfo.ventanaAbierta?"pendiente":"vencida");
 
-  const periodicaPendiente = semanaEstado!=="completada"||trimEstado!=="completada"||anualEstado!=="completada";
+  const periodicaPendiente = semanaEstado==="hoy"||semanaEstado==="encurso"||trimEstado!=="completada"||anualEstado!=="completada";
 
   const badges = {
     home:      (!mananHoy||(nocheDisp&&!nocheHoy)||periodicaPendiente)?1:0,
@@ -393,14 +386,14 @@ export default function App() {
         )}
 
         {view==="historial" && (
-          <Historial stats={stats} registros={registros} mananaLog={mananaLog} semanaLog={semanaLog} today={today} nocheDisp={nocheDisp}/>
+          <Historial stats={stats} registros={registros} mananaLog={mananaLog} semanaLog={semanaLog} planLog={planLog} today={today} nocheDisp={nocheDisp}/>
         )}
 
         {view==="periodica" && (
           <Periodica sub={periodicaSub} setSub={setPeriodicaSub}
             semanaEstado={semanaEstado} trimEstado={trimEstado} anualEstado={anualEstado}
-            wkStart={wkStart} semanaForm={semanaForm} setSemanaForm={setSemanaForm}
-            onMetaChange={handleMetaChange} onGuardarSemana={handleGuardarSemana} savedSemana={savedSemana} semanaLog={semanaLog}
+            W={W} P={P} semanaLog={semanaLog} planLog={planLog} registros={registros} mananaLog={mananaLog}
+            onGuardarRevision={handleGuardarRevision} todos={todos} onAgregarTodo={handleAgregarTodo} onTodo={handleTodo}
             trimInfo={trimInfo} trimestreForm={trimestreForm} setTrimestreForm={setTrimestreForm}
             onGuardarTrimestre={handleGuardarTrimestre} savedTrimestre={savedTrimestre} trimestreLog={trimestreLog}
             anualInfo={anualInfo} anualForm={anualForm} setAnualForm={setAnualForm}
