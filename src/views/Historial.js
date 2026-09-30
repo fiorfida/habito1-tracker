@@ -1,12 +1,14 @@
 import { C, card, scoreColor, dotColor } from "../theme";
-import { SLabel, MetasRolLista, Empty } from "../components/ui";
+import { useState } from "react";
+import { SLabel, Empty } from "../components/ui";
+import SemanaResumen from "../components/SemanaResumen";
 import { PREGUNTAS_H1, PREGUNTA_H2 } from "../content/contenido";
-import { formatDate, dayOfWeek, NOCHE_DESDE } from "../lib/fechas";
-import { metasActivas } from "../lib/metas";
+import { formatDate, dayOfWeek, addDays, NOCHE_DESDE } from "../lib/fechas";
 
-export default function Historial({stats, registros, mananaLog, semanaLog, today, nocheDisp}){
+export default function Historial({stats, registros, mananaLog, semanaLog, planLog, today, nocheDisp}){
   const { allDays, tracked, totalNoche, totalManana, mananasHechas, consistency } = stats;
-  const semanasConMetas = Object.keys(semanaLog).filter(wk=>metasActivas(semanaLog[wk].metas).length>0);
+  const [verTodas, setVerTodas] = useState(false);
+  const semanas = Object.keys(semanaLog).sort((a,b)=>b.localeCompare(a));
   return (
     <div>
       {allDays.length>1 && (
@@ -19,18 +21,11 @@ export default function Historial({stats, registros, mananaLog, semanaLog, today
           <div style={{fontSize:28,fontWeight:700,color:scoreColor(consistency)}}>{consistency}%</div>
         </div>
       )}
-      {semanasConMetas.length>0 && (
+      {semanas.length>0 && (
         <div style={{marginBottom:20}}>
-          <SLabel>Metas semanales por rol</SLabel>
-          {semanasConMetas.sort((a,b)=>b.localeCompare(a)).map(wk=>{
-            const s=semanaLog[wk];
-            return (
-              <div key={wk} style={{...card,marginBottom:10}}>
-                <div style={{fontSize:13,fontWeight:600,color:C.navy,marginBottom:8}}>Semana del {formatDate(wk)}</div>
-                <MetasRolLista metas={s.metas}/>
-              </div>
-            );
-          })}
+          <SLabel>Revisiones semanales</SLabel>
+          {(verTodas?semanas:semanas.slice(0,1)).map(wk=><SemanaResumen key={wk} W={wk} doc={semanaLog[wk]} plan={planLog[addDays(wk,7)]}/>)}
+          {semanas.length>1 && <button onClick={()=>setVerTodas(!verTodas)} style={{background:"none",border:"none",color:C.celeste,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit",padding:0}}>{verTodas?"Ver solo la última":`Ver las ${semanas.length} revisiones`}</button>}
         </div>
       )}
       {allDays.length===0?<Empty/>:(

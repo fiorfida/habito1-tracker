@@ -123,9 +123,16 @@ export function ChispaVista({chispa, onGuardar}){
 
 const nuevaAlternativa = () => ({ nombre:"", notas: MATRIZ_CRITERIOS.map(()=>null) });
 
-// Calculadora (Fase 1: no se guarda). Puntaje = Σ peso × nota (1-5).
-export function MatrizDecision({pesos}){
-  const [alts, setAlts] = useState(()=>[nuevaAlternativa(), nuevaAlternativa(), nuevaAlternativa()]);
+// Puntaje = Σ peso × nota (1-5). Con onGuardar (revisión semanal) la decisión
+// se guarda; sin él (vista de la chispa) funciona como calculadora.
+export function MatrizDecision({pesos, onGuardar, alternativasIniciales}){
+  const [alts, setAlts] = useState(()=>{
+    const base = (alternativasIniciales||[]).map(nombre=>({...nuevaAlternativa(), nombre}));
+    while (base.length<3) base.push(nuevaAlternativa());
+    return base;
+  });
+  const [contexto, setContexto] = useState("");
+  const [aviso, setAviso] = useState(null);
   const maximo = pesos.reduce((a,p)=>a+p,0)*5;
   const puntaje = a => a.notas.reduce((s,n,i)=>s+(n||0)*pesos[i],0);
   const completa = a => a.notas.every(n=>n!==null);
@@ -170,6 +177,21 @@ export function MatrizDecision({pesos}){
         <button onClick={()=>setAlts(prev => [...prev, nuevaAlternativa()])} style={{padding:"8px 14px",borderRadius:8,border:`1px solid ${C.celeste}`,background:"transparent",color:C.celeste,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>+ Agregar alternativa</button>
         <button onClick={()=>setAlts([nuevaAlternativa(), nuevaAlternativa(), nuevaAlternativa()])} style={{padding:"8px 14px",borderRadius:8,border:`1px solid ${C.border}`,background:"transparent",color:C.textMuted,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>Limpiar</button>
       </div>
+      {onGuardar && (
+        <div style={{marginTop:14,paddingTop:12,borderTop:`1px solid ${C.border}`}}>
+          <input value={contexto} onChange={e=>{setContexto(e.target.value); setAviso(null);}} placeholder="Qué estoy decidiendo (ej.: qué postergo esta semana)"
+            style={{...inp,fontSize:13,marginBottom:8}}/>
+          <button onClick={()=>{
+            const nombradas = completas.filter(a=>a.nombre.trim());
+            if (!contexto.trim() || nombradas.length<2) { setAviso("Completá qué estás decidiendo y al menos 2 alternativas con nombre y todas sus notas."); return; }
+            const top = nombradas.reduce((m,a)=>puntaje(a)>puntaje(m)?a:m);
+            onGuardar({ contexto:contexto.trim(), pesos:[...pesos], elegida:top.nombre.trim(),
+              alternativas: nombradas.map(a=>({nombre:a.nombre.trim(), notas:a.notas, puntaje:puntaje(a)})) });
+            setAviso("ok");
+          }} style={{...btnPrimario,padding:10,fontSize:14}}>Guardar decisión</button>
+          {aviso && <div style={{fontSize:12,marginTop:6,color:aviso==="ok"?C.yes:C.no}}>{aviso==="ok"?"✓ Decisión guardada con la revisión.":aviso}</div>}
+        </div>
+      )}
     </div>
   );
 }

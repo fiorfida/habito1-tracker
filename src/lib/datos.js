@@ -1,6 +1,6 @@
 import { db } from "../firebase";
-import { doc, setDoc, deleteDoc, collection, getDocs } from "firebase/firestore";
-import { addDays, todayBsAs } from "./fechas";
+import { doc, setDoc, collection, getDocs } from "firebase/firestore";
+import { todayBsAs } from "./fechas";
 
 // ─── Storage keys (copia local) ────────────────────────────────────────
 export const KEY_NOCHE      = "habito1_registros";
@@ -10,7 +10,7 @@ export const KEY_TRIMESTRE  = "habito1_trimestre";
 export const KEY_ANUAL      = "habito1_anual";
 export const KEY_PENDIENTES = "habito1_pendientes_sync";
 
-export const COLECCIONES = ["noche", "manana", "semana", "trimestre", "anual", "config"];
+export const COLECCIONES = ["noche", "manana", "semana", "trimestre", "anual", "config", "plan", "pendientes"];
 
 // ─── Firestore ─────────────────────────────────────────────────────────
 // Devuelve null si falla (el llamador decide cómo avisar).
@@ -35,12 +35,6 @@ export async function fbSet(uid, colName, docId, data) {
     await Promise.race([setDoc(doc(db, "users", uid, colName, docId), data, { merge: true }), limite]);
   } finally { clearTimeout(timer); }
 }
-export async function fbDelete(uid, colName, docId) {
-  try {
-    await deleteDoc(doc(db, "users", uid, colName, docId));
-  } catch(e) { console.error("fbDelete error:", e); }
-}
-
 // ─── Cola de guardados pendientes (sobrevive recargas) ─────────────────
 export function leerPendientes() {
   try { return JSON.parse(localStorage.getItem(KEY_PENDIENTES)) || []; } catch { return []; }
@@ -49,20 +43,9 @@ export function escribirPendientes(lista) {
   try { localStorage.setItem(KEY_PENDIENTES, JSON.stringify(lista)); } catch {}
 }
 
-// ─── Migración histórica de claves semanales (lun → dom) ───────────────
-export function migrarSemanaLog(log){
-  const migrated = {}; const cambios = [];
-  Object.entries(log).forEach(([key,val])=>{
-    const dow = new Date(key+"T12:00:00").getDay();
-    if (dow===1) { // clave vieja: lunes de la semana lunes-domingo
-      const newKey = addDays(key,-1);
-      migrated[newKey] = val;
-      cambios.push({antes:key, despues:newKey});
-    } else {
-      migrated[key] = val;
-    }
-  });
-  return { migrated, cambios };
+// ─── Ids para documentos nuevos (pendientes, ítems del plan) ──────────
+export function nuevoId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
 // ─── Backup completo en JSON, leído directo de Firestore ───────────────
