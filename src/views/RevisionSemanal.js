@@ -3,7 +3,8 @@ import { C, card, inp, btnPrimario } from "../theme";
 import { SLabel } from "../components/ui";
 import { MatrizDecision } from "../components/Chispa";
 import { MISION, VISION_ALT, ROLES } from "../content/contenido";
-import { formatDate, dayOfWeek, todayBsAs } from "../lib/fechas";
+import { formatDate, dayOfWeek, todayBsAs, addDays } from "../lib/fechas";
+import { trimestreDe, nombreTrimestre } from "../lib/periodos";
 import { mergeMetas } from "../lib/metas";
 import { nuevoId } from "../lib/datos";
 import {
@@ -83,7 +84,7 @@ function sincronizarMetas(items, metas){
 
 // ─── Asistente ─────────────────────────────────────────────────────────
 export default function RevisionSemanal(props){
-  const { W, P, revDoc, planDoc, planLog, semanaLog, registros, mananaLog, todos, pesos, onGuardar, onTodo } = props;
+  const { W, P, revDoc, planDoc, planLog, semanaLog, registros, mananaLog, todos, pesos, onGuardar, onTodo, planTrim, objetivos } = props;
   const [rev, setRev]   = useState(()=>revInicial(revDoc));
   const [plan, setPlan] = useState(()=>planInicial(planDoc, W));
   const [error, setError] = useState(null);
@@ -132,7 +133,7 @@ export default function RevisionSemanal(props){
     if (await guardar({ estado:"completa", paso:7 })) { setAviso("✓ Revisión completa y plan guardado."); }
   };
 
-  const ctx = { W, P, rev, setRev, setRefl, plan, setPlan, setItems, setItem, planLog, semanaLog, registros, mananaLog, todos, onTodo, pesos,
+  const ctx = { W, P, rev, setRev, setRefl, plan, setPlan, setItems, setItem, planLog, semanaLog, registros, mananaLog, todos, onTodo, pesos, planTrim, objetivos,
     disp, objetivo, dem, excedido };
 
   return (
@@ -242,7 +243,7 @@ function Paso2({W, registros, mananaLog}){
 }
 
 // ─── 3. Realizado vs. plan ─────────────────────────────────────────────
-function Paso3({W, rev, setRev, planLog, semanaLog}){
+function Paso3({W, rev, setRev, planLog, semanaLog, planTrim}){
   const previstas = metasPrevistas(W, planLog, semanaLog);
   const setRol = (num, c) => setRev(r=>({...r, realizado:{...r.realizado, [num]:{...(r.realizado?.[num]||{}), ...c}}}));
   const hayMetas = ROLES.some(r=>(previstas?.[r.num]||[]).some(t=>t&&t.trim()));
@@ -250,7 +251,8 @@ function Paso3({W, rev, setRev, planLog, semanaLog}){
     <>
       <div style={card}>
         <SLabel>Plan trimestral — previsto para esta semana</SLabel>
-        <Pendiente>Pendiente de carga — el plan trimestral se carga en la Fase 4.</Pendiente>
+        <AccionesTrimestrales semana={W} planTrim={planTrim} estados={rev.realizado?.trimestral||{}}
+          onEstado={(id,v)=>setRev(r=>({...r, realizado:{...r.realizado, trimestral:{...(r.realizado?.trimestral||{}), [id]:v}}}))}/>
       </div>
       {!hayMetas ? (
         <div style={card}>
@@ -281,6 +283,45 @@ function Paso3({W, rev, setRev, planLog, semanaLog}){
         })}
       </div>}
     </>
+  );
+}
+
+// Acciones del plan trimestral previstas para una semana.
+function accionesDeSemana(semana, planTrim){
+  const K = trimestreDe(addDays(semana, 6));
+  const plan = planTrim?.[K];
+  const acciones = (plan?.objetivos||[]).flatMap(o=>(o.acciones||[]).filter(a=>a.semana===semana&&a.texto).map(a=>({...a, rol:o.rol, objetivo:o.texto})));
+  return { K, plan, acciones };
+}
+
+function AccionesTrimestrales({semana, planTrim, estados, onEstado}){
+  const { K, plan, acciones } = accionesDeSemana(semana, planTrim);
+  if (!plan) return <Pendiente>Sin plan cargado para el {nombreTrimestre(K)}. Se carga en Periódica → Trimestral.</Pendiente>;
+  if (!acciones.length) return <Pendiente>El plan del {nombreTrimestre(K)} no tiene acciones para esta semana.</Pendiente>;
+  return acciones.map(a=>(
+    <div key={a.id} style={{padding:"8px 0",borderTop:`1px solid ${C.border}`}}>
+      <div style={{fontSize:13,color:C.textPrimary}}>{a.texto} <span style={{fontSize:11,color:C.textMuted}}>· {nombreRol(a.rol)} · {a.objetivo}</span></div>
+      <div style={{marginTop:6}}><Opciones valor={estados[a.id]} opciones={SI_PARCIAL_NO} onChange={v=>onEstado(a.id,v)}/></div>
+    </div>
+  ));
+}
+
+// Insumos de un rol para elegir sus metas: acciones trimestrales de la semana
+// y objetivos anuales, con los plazos de los próximos 30 días resaltados.
+function InsumosRol({rol, semana, planTrim, objetivos}){
+  const { acciones } = accionesDeSemana(semana, planTrim);
+  const delRol = acciones.filter(a=>a.rol===rol);
+  const anio = Number(addDays(semana, 6).slice(0,4));
+  const limite = addDays(semana, 37);
+  const anuales = Object.values(objetivos||{}).filter(o=>o.rol===rol && o.anio===anio && !o.archivado && o.estado!=="cumplido");
+  if (!delRol.length && !anuales.length) return <div style={{fontSize:11,color:C.textMuted,marginBottom:6}}>Sin acciones trimestrales ni objetivos anuales para este rol.</div>;
+  return (
+    <div style={{fontSize:12,color:C.textSecond,background:C.surfaceAlt,borderRadius:8,padding:"6px 8px",marginBottom:8}}>
+      {delRol.map(a=><div key={a.id}>▸ {a.texto} <span style={{color:C.textMuted}}>(acción trimestral)</span></div>)}
+      {anuales.map((o,k)=>{ const cerca = o.plazo && o.plazo<=limite; return (
+        <div key={k} style={{color:cerca?C.warn:C.textSecond}}>◎ {o.titulo}{o.plazo?` · plazo ${formatDate(o.plazo)}`:""}{cerca?" · se acerca":""}</div>
+      ); })}
+    </div>
   );
 }
 
@@ -322,7 +363,7 @@ function Paso4({rev, setRefl}){
 }
 
 // ─── 5. Qué necesita cada rol + inventario ─────────────────────────────
-function Paso5({P, plan, setPlan, setItems, setItem, todos, onTodo}){
+function Paso5({P, plan, setPlan, setItems, setItem, todos, onTodo, planTrim, objetivos}){
   const setMeta = (num, idx, v) => setPlan(p=>{
     const metas = {...p.metas, [num]:p.metas[num].map((x,i)=>i===idx?v:x)};
     return {...p, metas, items:sincronizarMetas(p.items, metas)};
@@ -347,7 +388,7 @@ function Paso5({P, plan, setPlan, setItems, setItem, todos, onTodo}){
           return (
             <div key={r.num} style={card}>
               <div style={{fontSize:14,fontWeight:600,color:C.textPrimary,marginBottom:8}}>{r.num} · {r.nombre}</div>
-              <div style={{fontSize:11,color:C.textMuted,marginBottom:6}}>Insumos: plan trimestral y objetivos anuales — pendiente de carga (Fase 4)</div>
+              <InsumosRol rol={r.num} semana={P} planTrim={planTrim} objetivos={objetivos}/>
               {delRol.length>0 && (
                 <div style={{marginBottom:8}}>
                   {delRol.map(t=>(

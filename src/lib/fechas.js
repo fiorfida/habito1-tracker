@@ -42,23 +42,3 @@ export function dateRange(from,to) {
   while(cur<=to){dates.push(cur);cur=addDays(cur,1);}
   return dates;
 }
-export function trimestralStatus(ds){
-  const [yStr,mStr,dStr] = ds.split("-");
-  const y=parseInt(yStr,10), m=parseInt(mStr,10), day=parseInt(dStr,10);
-  const candidatos = [{quarter:1,y,m:4},{quarter:2,y,m:7},{quarter:3,y,m:10}];
-  let relevante = null;
-  candidatos.forEach(c=>{
-    const inicio = `${c.y}-${String(c.m).padStart(2,"0")}-01`;
-    if (ds>=inicio) relevante = c;
-  });
-  if (!relevante) relevante = {quarter:3,y:y-1,m:10};
-  const ventanaAbierta = (m===relevante.m && y===relevante.y && day<=7);
-  return { key:`${relevante.y}-Q${relevante.quarter}`, quarter:relevante.quarter, quarterYear:relevante.y, ventanaAbierta };
-}
-export function anualStatus(ds){
-  const [yStr,mStr,dStr] = ds.split("-");
-  const y=parseInt(yStr,10), m=parseInt(mStr,10), day=parseInt(dStr,10);
-  const reviewedYear = y-1;
-  const ventanaAbierta = (m===1 && day<=7);
-  return { key:String(reviewedYear), reviewedYear, ventanaAbierta };
-}

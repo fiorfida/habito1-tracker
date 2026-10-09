@@ -2,7 +2,7 @@ import { C } from "../theme";
 import { SLabel, HomeRow } from "../components/ui";
 import { dayOfWeek, formatDate } from "../lib/fechas";
 
-export default function Home({today, mananHoy, nocheHoy, nocheDisp,semanaEstado, trimEstado, anualEstado, irA}){
+export default function Home({today, mananHoy, nocheHoy, nocheDisp,semanaEstado, trimEstado, anualEstado, trimEtiqueta, anualEtiqueta, irA}){
   return (
     <div>
       <div style={{fontSize:11,letterSpacing:2,color:C.textMuted,textTransform:"uppercase",marginBottom:14}}>{dayOfWeek(today)} {formatDate(today)}</div>
@@ -21,9 +21,9 @@ export default function Home({today, mananHoy, nocheHoy, nocheDisp,semanaEstado,
         <div className="grid-3">
           <HomeRow icon="📋" label="Semanal" estado={semanaEstado}
             onClick={()=>irA("periodica","semanal")}/>
-          <HomeRow icon="⭐" label="Trimestral" estado={trimEstado}
+          <HomeRow icon="⭐" label="Trimestral" estado={trimEstado} etiqueta={trimEtiqueta||(trimEstado==="hoy"?"Disponible":undefined)}
             onClick={()=>irA("periodica","trimestral")}/>
-          <HomeRow icon="⭐" label="Anual" estado={anualEstado}
+          <HomeRow icon="⭐" label="Anual" estado={anualEstado} etiqueta={anualEtiqueta}
             onClick={()=>irA("periodica","anual")}/>
         </div>
       </div>
