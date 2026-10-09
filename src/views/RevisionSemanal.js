@@ -225,7 +225,17 @@ function Paso2({W, registros, mananaLog}){
       </div>
       <div style={card}>
         <SLabel>Compromisos diarios y tarea clave</SLabel>
-        <Pendiente>Pendiente de carga — se registran en la Mañana y la Noche desde la Fase 3.</Pendiente>
+        {[["Compromisos de la mañana", d.compromisos], ["Tarea más importante del día", d.tareasClave]].map(([t,c])=>(
+          <div key={t} style={{display:"flex",justifyContent:"space-between",gap:8,flexWrap:"wrap",fontSize:13,color:C.textSecond,padding:"6px 0"}}>
+            <span>{t}</span>
+            {c.cargados===0 ? <span style={{color:C.textMuted,fontStyle:"italic"}}>Sin cargar esta semana</span> : (
+              <span>
+                {c.cargados} cargados · <strong style={{color:C.yes}}>{c.si} sí</strong> · <strong style={{color:C.warn}}>{c.parcial} parcial</strong> · <strong style={{color:C.no}}>{c.no} no</strong>
+                {c.cargados-c.si-c.parcial-c.no>0 && <span style={{color:C.textMuted}}> · {c.cargados-c.si-c.parcial-c.no} sin responder</span>}
+              </span>
+            )}
+          </div>
+        ))}
       </div>
     </>
   );

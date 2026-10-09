@@ -74,11 +74,37 @@ export default function Historial({stats, registros, mananaLog, semanaLog, planL
                   )}
                 </>
               )}
+              <DiaExtra m={mananaLog[d]} r={r}/>
             </div>
           );
         })}
         </div>
       )}
+    </div>
+  );
+}
+
+
+// Fase 3: compromiso y tarea clave de la mañana con su resultado de la noche, y conflicto.
+const RESULTADO = { si:{t:"Sí",c:C.yes}, parcial:{t:"Parcial",c:C.warn}, no:{t:"No",c:C.no} };
+function DiaExtra({m, r}){
+  const filas = [
+    m?.tareaClave?.texto && {k:"★ Tarea clave", v:m.tareaClave.texto, res:r?.tareaClaveHecha},
+    m?.compromiso && {k:"Compromiso", v:m.compromiso, res:r?.compromisoCumplido},
+    r?.conflicto && r.conflicto_nota && {k:"Conflicto · qué pude hacer diferente", v:r.conflicto_nota},
+  ].filter(Boolean);
+  if (!filas.length) return null;
+  return (
+    <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${C.border}`}}>
+      {filas.map(f=>(
+        <div key={f.k} style={{display:"flex",justifyContent:"space-between",gap:10,marginBottom:6}}>
+          <div>
+            <div style={{fontSize:11,color:C.textMuted,marginBottom:1}}>{f.k}</div>
+            <div style={{fontSize:13,color:C.textSecond}}>{f.v}</div>
+          </div>
+          {f.res && <span style={{fontSize:11,fontWeight:700,color:RESULTADO[f.res].c,flexShrink:0}}>{RESULTADO[f.res].t}</span>}
+        </div>
+      ))}
     </div>
   );
 }

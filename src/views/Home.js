@@ -9,7 +9,7 @@ export default function Home({today, mananHoy, nocheHoy, nocheDisp,semanaEstado,
 
       <div className="grid-2">
         <HomeRow icon="☀️" label="Mañana" estado={mananHoy?"completada":"pendiente"}
-          detalle={mananHoy?"Misión, visión y roles leídos hoy.":"Todavía no la hiciste hoy."}
+          detalle={mananHoy?"Misión, visión y plan del día revisados.":"Todavía no la hiciste hoy."}
           onClick={()=>irA("manana")}/>
         <HomeRow icon="🌙" label="Noche" estado={nocheHoy?"completada":nocheDisp?"pendiente":"neutral"}
           detalle={nocheHoy?"Registro del día guardado.":nocheDisp?"Falta tu reflexión nocturna.":"Se habilita a la noche."}
