@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { C, card } from "../theme";
 import { metasActivas } from "../lib/metas";
 
@@ -19,7 +20,7 @@ export function EstadoBanner({estado, tituloPendiente, tituloVencida, tituloComp
     </div>
   );
 }
-export function HomeRow({icon, label, estado, detalle, onClick}){
+export function HomeRow({icon, label, estado, detalle, etiqueta, onClick}){
   const colores = {
     pendiente:  {bg:C.warnBg, text:C.warn, texto:"Pendiente"},
     vencida:    {bg:C.noBg,   text:C.no,   texto:"Vencida"},
@@ -42,7 +43,7 @@ export function HomeRow({icon, label, estado, detalle, onClick}){
           {detalle && <div style={{fontSize:12,color:"#8aa3c0",marginTop:2}}>{detalle}</div>}
         </div>
       </div>
-      <span style={{fontSize:12,fontWeight:700,padding:"4px 12px",borderRadius:20,background:c.bg,color:c.text,flexShrink:0}}>{c.texto}</span>
+      <span style={{fontSize:12,fontWeight:700,padding:"4px 12px",borderRadius:20,background:c.bg,color:c.text,flexShrink:0}}>{etiqueta||c.texto}</span>
     </button>
   );
 }
@@ -97,5 +98,26 @@ export function AvisoSync({errorCarga, pendientes, reintentando, onReintentar}){
         </>
       )}
     </div>
+  );
+}
+
+// Fecha siempre en dd/mm/yyyy (el selector nativo depende del navegador).
+// value/onChange en formato de almacenamiento "AAAA-MM-DD" ("" = sin fecha).
+const isoATexto = v => v ? v.split("-").reverse().join("/") : "";
+export function FechaInput({value, onChange, style}){
+  const [texto, setTexto] = useState(isoATexto(value));
+  const [error, setError] = useState(false);
+  useEffect(()=>{ setTexto(isoATexto(value)); }, [value]);
+  const confirmar = () => {
+    if (!texto.trim()) { setError(false); onChange(""); return; }
+    const m = texto.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    const iso = m && `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+    const valida = iso && !isNaN(new Date(iso+"T12:00:00")) && new Date(iso+"T12:00:00").toISOString().slice(0,10)===iso;
+    setError(!valida);
+    if (valida) onChange(iso);
+  };
+  return (
+    <input value={texto} onChange={e=>setTexto(e.target.value)} onBlur={confirmar} placeholder="dd/mm/aaaa"
+      inputMode="numeric" style={{...style, borderColor:error?C.no:undefined}} title={error?"Fecha inválida: usá dd/mm/aaaa":undefined}/>
   );
 }

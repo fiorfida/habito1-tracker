@@ -133,15 +133,4 @@ export const PREGUNTAS_SEMANA = [
   { id:"s3", pregunta:"¿Qué quiero hacer diferente la semana que viene?",                   placeholder:"Ej: Bloquear el miércoles para avanzar con Riglos." },
 ];
 
-export const PREGUNTAS_TRIMESTRE = [
-  { id:"t1", pregunta:"¿Qué rol descuidé más este trimestre, y qué voy a ajustar para el próximo?",                              placeholder:"Ej: Facundito — poca conexión real con Flo por el ritmo de trabajo." },
-  { id:"t2", pregunta:"Repasando mi misión y visión: ¿siguen representando quién quiero ser, o hay algo que necesito actualizar?", placeholder:"Ej: Siguen vigentes, pero quiero sumar foco en..." },
-  { id:"t3", pregunta:"De las cuatro dimensiones de \"Afilar la sierra\" (cuerpo, mente, vínculos, espíritu), ¿cuál quedó más floja este trimestre?", placeholder:"Ej: Cuerpo — dejé de entrenar en las últimas semanas." },
-];
 
-export const PREGUNTAS_ANUAL = [
-  { id:"a1", pregunta:"Mirando el año que termina, ¿qué decisión o hábito tuvo más impacto positivo en mi vida?", placeholder:"Ej: Empezar a entrenar temprano cambió mi energía todo el año." },
-  { id:"a2", pregunta:"¿Qué rol o vínculo quedó más descuidado durante el año, y qué voy a cambiar?",             placeholder:"Ej: Amigos — bajé mucho la frecuencia de encuentros con el grupo." },
-  { id:"a3", pregunta:"¿Mi misión, visión y roles siguen vigentes, o hay algo que quiero reescribir para este nuevo año?", placeholder:"Ej: Siguen firmes, ajusto el rol de Emprendedor con foco en Riglos." },
-  { id:"a4", pregunta:"¿Cuál es la piedra grande — lo más importante — para este año que arranca?",               placeholder:"Ej: Consolidar la libertad financiera con el proyecto Riglos." },
-];

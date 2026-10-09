@@ -4,7 +4,8 @@ import "./responsive.css";
 
 import { C } from "./theme";
 import { Escudo, AvisoSync } from "./components/ui";
-import { todayBsAs, relevantWeekStart, getWeekStart, dateRange, trimestralStatus, anualStatus, formatDate, nocheDisponible } from "./lib/fechas";
+import { todayBsAs, relevantWeekStart, getWeekStart, dateRange, formatDate, nocheDisponible } from "./lib/fechas";
+import { ventanaTrimestral, ventanaAnual, nombreTrimestre } from "./lib/periodos";
 import { fraseDelDia } from "./lib/frases";
 import { semanaPlanDe, esV2, revisionCompleta } from "./lib/semanal";
 import { CHISPA_DEFAULT } from "./content/contenido";
@@ -34,6 +35,8 @@ export default function App() {
   const [anualLog,    setAnualLog]    = useState({});
   const [planLog,     setPlanLog]     = useState({}); // plan/{domingo de la semana planificada}
   const [todos,       setTodos]       = useState({}); // pendientes (To Do's)
+  const [objetivos,   setObjetivos]   = useState({}); // objetivos/{id} anuales por rol
+  const [planTrim,    setPlanTrim]    = useState({}); // planTrimestral/{AAAA-QN}
   const [chispaCfg,   setChispaCfg]   = useState(null); // lo guardado en config/chispa (null = usar valores por defecto)
   const [, setReloj] = useState(0); // re-render cada minuto: habilita la Noche a las 19:00 y cambia de día a medianoche
 
@@ -47,10 +50,6 @@ export default function App() {
     conflicto:null, conflicto_nota:"", compromisoCumplido:null, tareaClaveHecha:null,
   });
   const [savedNoche,  setSavedNoche]  = useState(false);
-  const [trimestreForm,  setTrimestreForm]  = useState({t1:"",t2:"",t3:""});
-  const [savedTrimestre, setSavedTrimestre] = useState(false);
-  const [anualForm,      setAnualForm]      = useState({a1:"",a2:"",a3:"",a4:""});
-  const [savedAnual,     setSavedAnual]     = useState(false);
   const [periodicaSub,   setPeriodicaSub]   = useState("semanal");
 
   // ── Auth listener ──
@@ -68,7 +67,7 @@ export default function App() {
   // ── Load data when user logs in ──
   const loadFromFirebase = useCallback(async (uid) => {
     setSyncing(true);
-    const [r, m, s, t, a, cfg, pl, td] = await Promise.all([
+    const [r, m, s, t, a, cfg, pl, td, ob, pt] = await Promise.all([
       fbGet(uid, "noche"),
       fbGet(uid, "manana"),
       fbGet(uid, "semana"),
@@ -77,8 +76,10 @@ export default function App() {
       fbGet(uid, "config"),
       fbGet(uid, "plan"),
       fbGet(uid, "pendientes"),
+      fbGet(uid, "objetivos"),
+      fbGet(uid, "planTrimestral"),
     ]);
-    const fallidas = [["Noche",r],["Mañana",m],["Semanal",s],["Trimestral",t],["Anual",a],["Configuración",cfg],["Plan",pl],["Pendientes",td]]
+    const fallidas = [["Noche",r],["Mañana",m],["Semanal",s],["Trimestral",t],["Anual",a],["Configuración",cfg],["Plan",pl],["Pendientes",td],["Objetivos",ob],["Plan trimestral",pt]]
       .filter(([,v])=>v===null).map(([n])=>n);
     setErrorCarga(fallidas.length ? fallidas : null);
     if (r) { setRegistros(r); try { localStorage.setItem(KEY_NOCHE,  JSON.stringify(r)); } catch {} }
@@ -89,6 +90,8 @@ export default function App() {
     if (cfg) setChispaCfg(cfg.chispa || null);
     if (pl) setPlanLog(pl);
     if (td) setTodos(td);
+    if (ob) setObjetivos(ob);
+    if (pt) setPlanTrim(pt);
     setSyncing(false);
   }, []);
 
@@ -119,22 +122,6 @@ export default function App() {
         conflicto:null, conflicto_nota:"", compromisoCumplido:null, tareaClaveHecha:null}));
     }
   }, [form.fecha, registros]);
-
-  // ── Pre-fill trimestre form ──
-  useEffect(() => {
-    const { key } = trimestralStatus(todayBsAs());
-    const t = trimestreLog[key];
-    if (t) setTrimestreForm({t1:t.t1??"",t2:t.t2??"",t3:t.t3??""});
-    else setTrimestreForm({t1:"",t2:"",t3:""});
-  }, [trimestreLog]);
-
-  // ── Pre-fill anual form ──
-  useEffect(() => {
-    const { key } = anualStatus(todayBsAs());
-    const a = anualLog[key];
-    if (a) setAnualForm({a1:a.a1??"",a2:a.a2??"",a3:a.a3??"",a4:a.a4??""});
-    else setAnualForm({a1:"",a2:"",a3:"",a4:""});
-  }, [anualLog]);
 
   // ── Guardado en la nube con cola de pendientes ──
   // Devuelve true si llegó a Firestore. Si falla, el dato queda en el
@@ -182,18 +169,6 @@ export default function App() {
     try { localStorage.setItem(KEY_MANANA, JSON.stringify(data)); } catch {}
     const t = todayBsAs();
     return guardarNube("manana", t, data[t], `Mañana ${formatDate(t)}`);
-  };
-  const persistTrimestre = async (data) => {
-    setTrimestreLog(data);
-    try { localStorage.setItem(KEY_TRIMESTRE, JSON.stringify(data)); } catch {}
-    const { key } = trimestralStatus(todayBsAs());
-    return guardarNube("trimestre", key, data[key], `Trimestral ${key.replace("-Q"," T")}`);
-  };
-  const persistAnual = async (data) => {
-    setAnualLog(data);
-    try { localStorage.setItem(KEY_ANUAL, JSON.stringify(data)); } catch {}
-    const { key } = anualStatus(todayBsAs());
-    return guardarNube("anual", key, data[key], `Anual ${key}`);
   };
 
   const flashGuardado = (setter) => { setter(true); setTimeout(()=>setter(false),2500); };
@@ -244,16 +219,19 @@ export default function App() {
     return guardarNube("pendientes", id, t, `Pendiente "${(t.texto||"").length>30?t.texto.slice(0,30)+"…":(t.texto||"")}"`);
   };
 
-  const handleGuardarTrimestre = async () => {
-    const { key } = trimestralStatus(todayBsAs());
-    const updated = {...trimestreLog, [key]:{...trimestreForm, ts:todayBsAs()}};
-    if (await persistTrimestre(updated)) flashGuardado(setSavedTrimestre);
+  // Fase 4: revisión trimestral, plan trimestral y objetivos anuales.
+  const handleGuardarTrimestral = async (K, data) => {
+    setTrimestreLog(prev => { const next = {...prev, [K]:data}; try { localStorage.setItem(KEY_TRIMESTRE, JSON.stringify(next)); } catch {} return next; });
+    return guardarNube("trimestre", K, data, `Revisión ${nombreTrimestre(K)}`);
   };
-
-  const handleGuardarAnual = async () => {
-    const { key } = anualStatus(todayBsAs());
-    const updated = {...anualLog, [key]:{...anualForm, ts:todayBsAs()}};
-    if (await persistAnual(updated)) flashGuardado(setSavedAnual);
+  const handleGuardarPlanTrim = async (K, data) => {
+    setPlanTrim(prev => ({...prev, [K]:data}));
+    return guardarNube("planTrimestral", K, data, `Plan ${nombreTrimestre(K)}`);
+  };
+  const handleGuardarObjetivo = async (id, cambios) => {
+    const o = {...objetivos[id], ...cambios};
+    setObjetivos(prev => ({...prev, [id]:o}));
+    return guardarNube("objetivos", id, o, `Objetivo "${(o.titulo||"").slice(0,30)}"`);
   };
 
   // Guarda cambios parciales de la chispa (contenido o pesos) en config/chispa.
@@ -290,15 +268,14 @@ export default function App() {
   const semanaEstado = revisionCompleta(revW) ? "completada"
     : esV2(revW) ? "encurso" : esSabado ? "hoy" : "espera";
 
-  const trimInfo    = trimestralStatus(today);
-  const trimHecho   = !!(trimestreLog[trimInfo.key]);
-  const trimEstado  = trimHecho?"completada":(trimInfo.ventanaAbierta?"pendiente":"vencida");
+  // Trimestral y anual: dentro de su ventana, o "Próxima: dd/mm" (nunca vencidas).
+  const ventanaT    = ventanaTrimestral(today);
+  const revT        = ventanaT.abierta ? trimestreLog[ventanaT.key] : null;
+  const trimEstado  = !ventanaT.abierta ? "espera" : revT?.estado==="completa" ? "completada" : revT?.v===2 ? "encurso" : "hoy";
+  const ventanaA    = ventanaAnual(today);
+  const anualEstado = "espera"; // la revisión anual llega en la entrega 4c
 
-  const anualInfo   = anualStatus(today);
-  const anualHecho  = !!(anualLog[anualInfo.key]);
-  const anualEstado = anualHecho?"completada":(anualInfo.ventanaAbierta?"pendiente":"vencida");
-
-  const periodicaPendiente = semanaEstado==="hoy"||semanaEstado==="encurso"||trimEstado!=="completada"||anualEstado!=="completada";
+  const periodicaPendiente = semanaEstado==="hoy"||semanaEstado==="encurso"||trimEstado==="hoy"||trimEstado==="encurso";
 
   const badges = {
     home:      (!mananHoy||(nocheDisp&&!nocheHoy)||periodicaPendiente)?1:0,
@@ -382,7 +359,9 @@ export default function App() {
 
         {view==="home" && (
           <Home today={today} mananHoy={mananHoy} nocheHoy={nocheHoy} nocheDisp={nocheDisp}
-            semanaEstado={semanaEstado} trimEstado={trimEstado} anualEstado={anualEstado} irA={irA}/>
+            semanaEstado={semanaEstado} trimEstado={trimEstado} anualEstado={anualEstado} irA={irA}
+            trimEtiqueta={ventanaT.abierta?undefined:`Próxima ${formatDate(ventanaT.proxima).slice(0,5)}`}
+            anualEtiqueta={ventanaA.abierta?"Disponible":`Próxima ${formatDate(ventanaA.proxima).slice(0,5)}`}/>
         )}
 
         {view==="manana" && <Manana key={today+(syncing?"-cargando":"")} today={today} doc={mananaLog[today]} plan={planLog[getWeekStart(today)]} mananaLog={mananaLog} frase={frase} onGuardar={handleGuardarManana}/>}
@@ -401,10 +380,8 @@ export default function App() {
             semanaEstado={semanaEstado} trimEstado={trimEstado} anualEstado={anualEstado}
             W={W} P={P} semanaLog={semanaLog} planLog={planLog} registros={registros} mananaLog={mananaLog}
             onGuardarRevision={handleGuardarRevision} todos={todos} onAgregarTodo={handleAgregarTodo} onTodo={handleTodo}
-            trimInfo={trimInfo} trimestreForm={trimestreForm} setTrimestreForm={setTrimestreForm}
-            onGuardarTrimestre={handleGuardarTrimestre} savedTrimestre={savedTrimestre} trimestreLog={trimestreLog}
-            anualInfo={anualInfo} anualForm={anualForm} setAnualForm={setAnualForm}
-            onGuardarAnual={handleGuardarAnual} savedAnual={savedAnual} anualLog={anualLog}
+            ventanaT={ventanaT} ventanaA={ventanaA} trimestreLog={trimestreLog} planTrim={planTrim} objetivos={objetivos}
+            onGuardarTrimestral={handleGuardarTrimestral} onGuardarPlanTrim={handleGuardarPlanTrim} onGuardarObjetivo={handleGuardarObjetivo}
             chispa={chispa} onGuardarChispa={handleGuardarChispa}/>
         )}
 
