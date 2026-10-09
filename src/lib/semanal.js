@@ -39,7 +39,15 @@ export function datosSemana(W, registros, mananaLog) {
     nota: [x.r.p1_nota, x.r.p3_nota, x.r.p4_nota].filter(Boolean).join(" · ").slice(0, 140),
   }));
   const orden = [...porDia].sort((a, b) => b.puntos - a.puntos || a.fecha.localeCompare(b.fecha));
+  // Cumplimiento: lo cargado a la mañana contra lo respondido a la noche.
+  const cumplimiento = (cargado, campo) => {
+    const conDato = dias.filter(d => cargado(mananaLog[d]));
+    const n = v => conDato.filter(d => registros[d]?.[campo] === v).length;
+    return { cargados: conDato.length, si: n("si"), parcial: n("parcial"), no: n("no") };
+  };
   return {
+    compromisos: cumplimiento(m => !!m?.compromiso, "compromisoCumplido"),
+    tareasClave: cumplimiento(m => !!m?.tareaClave?.texto, "tareaClaveHecha"),
     noches: regs.length,
     mananas: dias.filter(d => mananaLog[d]?.visto).length,
     score: regs.length ? Math.round((si / (regs.length * 4)) * 100) : null,

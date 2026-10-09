@@ -4,7 +4,7 @@ import "./responsive.css";
 
 import { C } from "./theme";
 import { Escudo, AvisoSync } from "./components/ui";
-import { todayBsAs, relevantWeekStart, dateRange, trimestralStatus, anualStatus, formatDate, nocheDisponible } from "./lib/fechas";
+import { todayBsAs, relevantWeekStart, getWeekStart, dateRange, trimestralStatus, anualStatus, formatDate, nocheDisponible } from "./lib/fechas";
 import { fraseDelDia } from "./lib/frases";
 import { semanaPlanDe, esV2, revisionCompleta } from "./lib/semanal";
 import { CHISPA_DEFAULT } from "./content/contenido";
@@ -44,6 +44,7 @@ export default function App() {
 
   const [form, setForm] = useState({
     fecha:todayBsAs(), p1:null,p1_nota:"",p2:null,p2_nota:"",p3:null,p3_nota:"",p4:null,p4_nota:"",
+    conflicto:null, conflicto_nota:"", compromisoCumplido:null, tareaClaveHecha:null,
   });
   const [savedNoche,  setSavedNoche]  = useState(false);
   const [trimestreForm,  setTrimestreForm]  = useState({t1:"",t2:"",t3:""});
@@ -111,9 +112,11 @@ export default function App() {
     const r = registros[form.fecha];
     if (r) {
       setForm(f => ({...f, p1:r.p1, p1_nota:r.p1_nota??"", p2:r.p2, p2_nota:r.p2_nota??"",
-        p3:r.p3, p3_nota:r.p3_nota??"", p4:r.p4??null, p4_nota:r.p4_nota??""}));
+        p3:r.p3, p3_nota:r.p3_nota??"", p4:r.p4??null, p4_nota:r.p4_nota??"",
+        conflicto:r.conflicto??null, conflicto_nota:r.conflicto_nota??"", compromisoCumplido:r.compromisoCumplido??null, tareaClaveHecha:r.tareaClaveHecha??null}));
     } else {
-      setForm(f => ({...f, p1:null,p1_nota:"",p2:null,p2_nota:"",p3:null,p3_nota:"",p4:null,p4_nota:""}));
+      setForm(f => ({...f, p1:null,p1_nota:"",p2:null,p2_nota:"",p3:null,p3_nota:"",p4:null,p4_nota:"",
+        conflicto:null, conflicto_nota:"", compromisoCumplido:null, tareaClaveHecha:null}));
     }
   }, [form.fecha, registros]);
 
@@ -202,14 +205,18 @@ export default function App() {
       fecha:form.fecha, p1:form.p1, p1_nota:form.p1_nota,
       p2:form.p2, p2_nota:form.p2_nota, p3:form.p3, p3_nota:form.p3_nota,
       p4:form.p4, p4_nota:form.p4_nota,
+      conflicto:form.conflicto, conflicto_nota:form.conflicto?form.conflicto_nota:"",
+      compromisoCumplido:form.compromisoCumplido, tareaClaveHecha:form.tareaClaveHecha,
     }};
     if (await persistNoche(updated)) flashGuardado(setSavedNoche);
   };
 
-  const handleMarcarManana = async () => {
+  // Mañana: guarda el avance; `visto` (mañana completada) solo se marca al completar.
+  const handleGuardarManana = async (m, completar) => {
     const t = todayBsAs();
-    const updated = {...mananaLog, [t]:{fecha:t, visto:true}};
-    await persistManana(updated);
+    const previo = mananaLog[t] || {};
+    const docu = {...previo, ...m, fecha:t, v:2, ...((completar||previo.visto)?{visto:true}:{})};
+    return persistManana({...mananaLog, [t]:docu});
   };
 
   // Revisión semanal: guarda semana/{W} (revisión) y plan/{P} (plan) juntos.
@@ -269,7 +276,7 @@ export default function App() {
   const consistency = totalNoche>0?Math.round((tracked.length/totalNoche)*100):0;
   const mananasHechas = allDays.filter(d=>mananaLog[d]?.visto).length;
   const stats = { allDays, tracked, missed, totalNoche, totalManana, consistency, mananasHechas };
-  const mananHoy    = !!(mananaLog[today]);
+  const mananHoy    = !!(mananaLog[today]?.visto);
   const nocheHoy    = !!(registros[today]);
   const nocheDisp   = nocheDisponible(today);
   const frase       = fraseDelDia();
@@ -378,10 +385,10 @@ export default function App() {
             semanaEstado={semanaEstado} trimEstado={trimEstado} anualEstado={anualEstado} irA={irA}/>
         )}
 
-        {view==="manana" && <Manana mananHoy={mananHoy} frase={frase} onMarcar={handleMarcarManana}/>}
+        {view==="manana" && <Manana key={today+(syncing?"-cargando":"")} today={today} doc={mananaLog[today]} plan={planLog[getWeekStart(today)]} mananaLog={mananaLog} frase={frase} onGuardar={handleGuardarManana}/>}
 
         {view==="noche" && (
-          <Noche form={form} setForm={setForm} today={today} registros={registros}
+          <Noche form={form} setForm={setForm} today={today} registros={registros} manana={mananaLog[form.fecha]}
             onGuardar={handleGuardarNoche} savedNoche={savedNoche}/>
         )}
 
