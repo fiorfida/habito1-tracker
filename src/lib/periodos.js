@@ -53,3 +53,24 @@ export function ventanaAnual(hoy) {
   if (m === 1) return { abierta: true, key: String(y - 1), hasta: `${y}-01-31` };
   return { abierta: false, proxima: `${y}-12-15`, key: String(y) };
 }
+
+// ─── Mensual: del 1 al 7 de cada mes, revisa el mes anterior ────────────
+export const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+export function mesAnterior(mesKey) {
+  const [y, m] = mesKey.split("-").map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${pad(m - 1)}`;
+}
+export function mesSiguiente(mesKey) {
+  const [y, m] = mesKey.split("-").map(Number);
+  return m === 12 ? `${y + 1}-01` : `${y}-${pad(m + 1)}`;
+}
+export const nombreMes = (mesKey) => { const [y, m] = mesKey.split("-").map(Number); return `${MESES[m - 1]} ${y}`; };
+export function rangoMes(mesKey) {
+  const inicio = `${mesKey}-01`;
+  return { inicio, fin: addDays(`${mesSiguiente(mesKey)}-01`, -1) };
+}
+export function ventanaMensual(hoy) {
+  const mes = hoy.slice(0, 7), dia = Number(hoy.slice(8));
+  if (dia <= 7) return { abierta: true, key: mesAnterior(mes), hasta: `${mes}-07` };
+  return { abierta: false, proxima: `${mesSiguiente(mes)}-01`, key: mesAnterior(mes) };
+}

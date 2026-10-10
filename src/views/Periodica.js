@@ -2,7 +2,7 @@ import { useState } from "react";
 import { C, card } from "../theme";
 import { SLabel } from "../components/ui";
 import { formatDate, addDays, todayBsAs } from "../lib/fechas";
-import { trimestreDe, nombreTrimestre } from "../lib/periodos";
+import { trimestreDe, nombreTrimestre, nombreMes } from "../lib/periodos";
 import { ChispaResumen, ChispaVista } from "../components/Chispa";
 import SemanaResumen from "../components/SemanaResumen";
 import RevisionSemanal from "./RevisionSemanal";
@@ -10,18 +10,21 @@ import RevisionTrimestral from "./RevisionTrimestral";
 import PlanTrimestral from "./PlanTrimestral";
 import ObjetivosAnio from "./ObjetivosAnio";
 import Pendientes from "./Pendientes";
+import RevisionMensual from "./RevisionMensual";
+import CierreMensual from "../components/CierreMensual";
 
 export default function Periodica(props){
-  const { sub, setSub, semanaEstado, trimEstado, todos } = props;
+  const { sub, setSub, semanaEstado, mensualEstado, trimEstado, todos } = props;
   const abiertos = Object.values(todos||{}).filter(t=>t.estado==="abierto").length;
   return (
     <div>
       <div style={{display:"flex",gap:4,marginBottom:20,background:C.surfaceAlt,borderRadius:10,padding:4,overflowX:"auto"}}>
         {[
           {id:"semanal",    label:"Semanal",    pend:semanaEstado==="hoy"||semanaEstado==="encurso"},
-          {id:"pendientes", label:`Pendientes${abiertos?` (${abiertos})`:""}`, pend:false},
+          {id:"mensual",    label:"Mensual",    pend:mensualEstado==="hoy"||mensualEstado==="encurso"},
           {id:"trimestral", label:"Trimestral", pend:trimEstado==="hoy"||trimEstado==="encurso"},
           {id:"anual",      label:"Anual",      pend:false},
+          {id:"pendientes", label:`Pendientes${abiertos?` (${abiertos})`:""}`, pend:false},
           {id:"chispa",     label:"🔥 Chispa",  pend:false},
         ].map(s=>(
           <button key={s.id} onClick={()=>setSub(s.id)} style={{
@@ -44,6 +47,8 @@ export default function Periodica(props){
 
       {sub==="pendientes" && <Pendientes todos={todos} onAgregar={props.onAgregarTodo} onTodo={props.onTodo}/>}
 
+      {sub==="mensual" && <Mensual {...props}/>}
+
       {sub==="trimestral" && <Trimestral {...props}/>}
 
       {sub==="anual" && <Anual {...props}/>}
@@ -60,6 +65,32 @@ function Banner({color, bg, borde, titulo, detalle}){
   );
 }
 
+function Mensual(props){
+  const { ventanaM, mensualEstado, mensualLog } = props;
+  const anteriores = Object.keys(mensualLog||{}).filter(k=>!(ventanaM.abierta&&k===ventanaM.key)).sort((a,b)=>b.localeCompare(a));
+  return (
+    <div>
+      {ventanaM.abierta ? (<>
+        {mensualEstado==="completada"
+          ? <Banner color={C.yes} bg={C.yesBg} borde={C.yes} titulo={`✓ Cierre de ${nombreMes(ventanaM.key)} completo`} detalle={`Podés editarlo hasta el ${formatDate(ventanaM.hasta)}.`}/>
+          : <Banner color={C.warn} bg={C.warnBg} borde={C.warn} titulo={`🗓 Revisión mensual de ${nombreMes(ventanaM.key)} disponible`} detalle={`Hasta el ${formatDate(ventanaM.hasta)}`}/>}
+        <RevisionMensual key={ventanaM.key} mesKey={ventanaM.key} doc={mensualLog[ventanaM.key]} frasesExtra={props.frasesExtra}
+          registros={props.registros} mananaLog={props.mananaLog} semanaLog={props.semanaLog} planLog={props.planLog}
+          onGuardar={props.onGuardarMensual} onGuardarFrases={props.onGuardarFrases}/>
+      </>) : (
+        <Banner color={C.textSecond} bg={C.surfaceAlt} borde={C.border} titulo={`🗓 Próxima revisión mensual: ${formatDate(ventanaM.proxima)}`}
+          detalle="Se hace en los primeros 7 días de cada mes y revisa el mes anterior."/>
+      )}
+      {anteriores.length>0 && (
+        <div style={{marginTop:24}}>
+          <SLabel>Cierres anteriores</SLabel>
+          {anteriores.map(k=><CierreMensual key={k} mesKey={k} doc={mensualLog[k]}/>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Trimestral(props){
   const { ventanaT, trimEstado, trimestreLog, planTrim, objetivos, chispa } = props;
   const actual = trimestreDe(todayBsAs());
@@ -71,7 +102,7 @@ function Trimestral(props){
           ? <Banner color={C.yes} bg={C.yesBg} borde={C.yes} titulo={`✓ Revisión ${nombreTrimestre(K)} completa`} detalle={`Podés editarla hasta el ${formatDate(ventanaT.hasta)}.`}/>
           : <Banner color={C.warn} bg={C.warnBg} borde={C.warn} titulo={`⭐ Revisión trimestral ${nombreTrimestre(K)} disponible`} detalle={`Hasta el ${formatDate(ventanaT.hasta)} · guía trimestral de Superhábitos`}/>}
         <RevisionTrimestral key={K} K={K} doc={trimestreLog[K]} planTrim={planTrim} objetivos={objetivos} pesos={chispa.pesos}
-          registros={props.registros} mananaLog={props.mananaLog} semanaLog={props.semanaLog}
+          registros={props.registros} mananaLog={props.mananaLog} semanaLog={props.semanaLog} mensualLog={props.mensualLog}
           onGuardar={props.onGuardarTrimestral} onGuardarPlan={props.onGuardarPlanTrim}/>
       </div>
     );
