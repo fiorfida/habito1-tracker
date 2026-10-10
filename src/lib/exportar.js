@@ -140,7 +140,7 @@ function docSemana(P, d, autor) {
       rf.intencion && `Intención para la semana: ${rf.intencion}`,
     ]);
   } else if (rev) {
-    html += h2("REVISIÓN (formato anterior)") + lista([rev.s1 && `Rol más descuidado: ${rev.s1}`, rev.s2 && `Decisión alineada: ${rev.s2}`, rev.s3 && `Qué hacer diferente: ${rev.s3}`]);
+    html += h2(`REVISIÓN DE LA SEMANA ${formatDate(W).slice(0, 5)} AL ${formatDate(addDays(W, 6)).slice(0, 5)} (formato anterior)`) + lista([rev.s1 && `Rol más descuidado: ${rev.s1}`, rev.s2 && `Decisión alineada: ${rev.s2}`, rev.s3 && `Qué hacer diferente: ${rev.s3}`]);
     if (metasActivas(rev.metas).length) html += h2("METAS POR ROL") + lista(metasActivas(rev.metas).map(r => `${r.num} · ${r.nombre}: ${(rev.metas[r.num] || []).filter(Boolean).join(" · ")}`));
   }
   if (plan) {
