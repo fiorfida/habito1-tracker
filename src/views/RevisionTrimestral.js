@@ -102,7 +102,7 @@ function Recoleccion({K, registros, mananaLog, semanaLog, mensualLog}){
   const e = estadisticasRango(inicio, fin, hoy, {registros, mananaLog});
   const semanas = semanasDelTrimestre(K);
   const hechas = semanas.filter(w=>revisionCompleta(semanaLog[w])).length;
-  const reflexiones = semanas.filter(w=>esV2(semanaLog[w])).map(w=>({w, r:semanaLog[w].reflexion||{}}));
+  const reflexiones = [...semanas].reverse().filter(w=>esV2(semanaLog[w])).map(w=>({w, r:semanaLog[w].reflexion||{}}));
   const ajustes = ajustesRango(inicio, fin, mananaLog);
   const Metrica = ({t,v,d}) => (
     <div style={{flex:"1 1 110px",background:C.surfaceAlt,borderRadius:8,padding:"10px 12px"}}>
