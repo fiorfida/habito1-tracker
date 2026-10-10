@@ -1,4 +1,4 @@
-import { ROLES } from "../content/contenido";
+import { ROLES, ROLES_TODOS } from "../content/contenido";
 
 export function emptyMetas() {
   const m = {};
@@ -16,5 +16,5 @@ export function mergeMetas(saved) {
 }
 export function metasActivas(metas) {
   if (!metas) return [];
-  return ROLES.filter(r => (metas[r.num]||[]).some(v => v && v.trim()));
+  return ROLES_TODOS.filter(r => (metas[r.num]||[]).some(v => v && v.trim()));
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { C, card, inp, btnPrimario } from "../theme";
 import { SLabel } from "../components/ui";
-import { MISION, VISION_ALT, ROLES, PREGUNTAS_H1, PREGUNTA_H2 } from "../content/contenido";
+import { MISION, VISION_ALT, ROLES, PREGUNTAS_H1, PREGUNTA_H2, nombreRol } from "../content/contenido";
 import { formatDate, todayBsAs } from "../lib/fechas";
 import { partesTrimestre, nombreTrimestre, trimestreSiguiente, semanasDelTrimestre } from "../lib/periodos";
 import { estadisticasRango, ajustesRango } from "../lib/estadisticas";
@@ -11,7 +11,6 @@ import PlanTrimestral from "./PlanTrimestral";
 import CierreMensual from "../components/CierreMensual";
 
 const PASOS = ["Recolección", "Misión y visión", "Objetivos del trimestre", "Hábitos y objetivos anuales", "Planificación", "Salida"];
-const nombreRol = (num) => ROLES.find(r=>r.num===num)?.nombre || `Rol ${num}`;
 const sub = { fontSize:12, color:C.textMuted, marginBottom:10 };
 const pregunta = { fontSize:14, fontWeight:500, color:C.textPrimary, margin:"12px 0 6px", lineHeight:1.5 };
 const area = { ...inp, resize:"vertical", fontSize:13, lineHeight:1.5 };

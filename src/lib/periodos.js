@@ -32,17 +32,19 @@ export function semanasDelTrimestre(key) {
   return semanas;
 }
 
-// Trimestral: 20/03-10/04 (T1), 20/06-10/07 (T2), 20/09-10/10 (T3).
-// El cierre del T4 se integra con la anual.
-export function ventanaTrimestral(hoy) {
+// Trimestral: abre en la fecha agendada en la revisión anual (config/agenda)
+// y dura 3 semanas. Sin agenda: 20/03, 20/06 y 20/09. El T4 va con la anual.
+export const DURACION_VENTANA_T = 21;
+export const inicioTrimestral = (anio, q, agenda) => agenda?.[anio]?.[`t${q}`] || `${anio}-${pad(q * 3)}-20`;
+export function ventanaTrimestral(hoy, agenda) {
   const y = Number(hoy.slice(0, 4));
   for (const anio of [y - 1, y]) {
     for (const q of [1, 2, 3]) {
-      const desde = `${anio}-${pad(q * 3)}-20`, hasta = `${anio}-${pad(q * 3 + 1)}-10`;
+      const desde = inicioTrimestral(anio, q, agenda), hasta = addDays(desde, DURACION_VENTANA_T - 1);
       if (hoy >= desde && hoy <= hasta) return { abierta: true, key: `${anio}-Q${q}`, hasta };
     }
   }
-  const proximas = [y, y + 1].flatMap(a => [3, 6, 9].map(m => `${a}-${pad(m)}-20`)).filter(f => f > hoy);
+  const proximas = [y, y + 1].flatMap(a => [1, 2, 3].map(q => inicioTrimestral(a, q, agenda))).filter(f => f > hoy).sort();
   return { abierta: false, proxima: proximas[0] };
 }
 
