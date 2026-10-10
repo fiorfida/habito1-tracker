@@ -121,3 +121,26 @@ export function FechaInput({value, onChange, style}){
       inputMode="numeric" style={{...style, borderColor:error?C.no:undefined}} title={error?"Fecha inválida: usá dd/mm/aaaa":undefined}/>
   );
 }
+
+// Estado de la exportación a Drive: documentos pendientes y botón para subirlos.
+export function AvisoDrive({pendientes, estado, conectado, onActualizar}){
+  const error = estado && typeof estado === "object" ? estado.error : null;
+  if (!pendientes && !error) return null;
+  const subiendo = estado === "subiendo";
+  const texto = subiendo ? "Actualizando documentos en Drive…"
+    : estado === "vencido" ? "El permiso de Drive venció."
+    : error ? `No se pudo actualizar Drive: ${error}`
+    : `Drive: ${pendientes} documento${pendientes===1?"":"s"} sin actualizar.`;
+  return (
+    <div style={{...card, background:C.celestePale, border:`1px solid ${C.celeste}`, marginBottom:20, display:"flex", justifyContent:"space-between", alignItems:"center", gap:10, flexWrap:"wrap"}}>
+      <div style={{fontSize:13,color:C.navy,fontWeight:600}}>📄 {texto}
+        {!subiendo && <div style={{fontSize:11,color:C.textMuted,fontWeight:400,marginTop:2}}>Tus registros ya están guardados; esto solo actualiza la copia en Drive.</div>}
+      </div>
+      {!subiendo && (
+        <button onClick={onActualizar} style={{padding:"8px 16px",borderRadius:8,border:"none",cursor:"pointer",background:C.celeste,color:C.white,fontSize:13,fontWeight:600,fontFamily:"inherit"}}>
+          {conectado ? "Actualizar Drive" : "Conectar y actualizar Drive"}
+        </button>
+      )}
+    </div>
+  );
+}

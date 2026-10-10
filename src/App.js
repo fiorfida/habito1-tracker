@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { logout, onAuthChange } from "./firebase";
 import "./responsive.css";
 
@@ -15,6 +15,9 @@ import {
   fbGet, fbSet, leerPendientes, escribirPendientes, descargarBackup, nuevoId,
 } from "./lib/datos";
 
+import { prepararDrive, conectarDrive, tokenVigente, PermisoVencido, guardarDocumento } from "./lib/drive";
+import { unidadesDe, unidadesDelRango, armarDocumento } from "./lib/exportar";
+import { AvisoDrive } from "./components/ui";
 import Login from "./views/Login";
 import Home from "./views/Home";
 import Manana from "./views/Manana";
@@ -63,6 +66,18 @@ export default function App() {
     const unsub = onAuthChange(u => setUser(u || null));
     return unsub;
   }, []);
+
+  // ── Drive: documentos pendientes de actualizar (sobreviven recargas) ──
+  const KEY_DRIVE = "habito1_drive_pendientes";
+  const [drivePend, setDrivePend] = useState(()=>{ try { return JSON.parse(localStorage.getItem(KEY_DRIVE))||[]; } catch { return []; } });
+  const [driveEstado, setDriveEstado] = useState(null); // null | "subiendo" | "vencido" | "ok" | {error}
+  const subiendo = useRef(false);
+  useEffect(() => { prepararDrive(); }, []);
+  const marcarDrive = (unidades) => {
+    if (!unidades.length) return;
+    setDrivePend(prev => { const next = [...new Set([...prev, ...unidades])]; try { localStorage.setItem(KEY_DRIVE, JSON.stringify(next)); } catch {} return next; });
+  };
+  const quitarDrive = (u) => setDrivePend(prev => { const next = prev.filter(x=>x!==u); try { localStorage.setItem(KEY_DRIVE, JSON.stringify(next)); } catch {} return next; });
 
   // ── Reloj ──
   useEffect(() => {
@@ -149,6 +164,7 @@ export default function App() {
     try {
       await fbSet(user.uid, col, id, data);
       actualizarPendientes(prev => prev.filter(p => !mismo(p)));
+      marcarDrive(unidadesDe(col, id, data));
       return true;
     } catch(e) {
       console.error("fbSet error:", e);
@@ -156,6 +172,40 @@ export default function App() {
       return false;
     }
   };
+  // Sube a Drive los documentos pendientes (cada uno se regenera entero).
+  const subirDrive = async (lista) => {
+    if (subiendo.current || !user) return;
+    subiendo.current = true; setDriveEstado("subiendo");
+    const datos = { registros, mananaLog, semanaLog, planLog, mensualLog, trimestreLog, planTrim, anualLog, objetivos, habitos };
+    try {
+      for (const u of lista) {
+        const doc = armarDocumento(u, datos, todayBsAs(), user.displayName);
+        if (doc) await guardarDocumento(doc.nombre, doc.html);
+        quitarDrive(u);
+      }
+      setDriveEstado("ok");
+    } catch(e) {
+      console.error("Drive:", e);
+      setDriveEstado(e instanceof PermisoVencido ? "vencido" : {error:e.message});
+    } finally { subiendo.current = false; }
+  };
+  // Con permiso vigente, lo pendiente sube solo (con una pausa para agrupar guardados seguidos).
+  useEffect(() => {
+    if (!drivePend.length || !tokenVigente() || subiendo.current) return;
+    const id = setTimeout(() => subirDrive(drivePend), 2500);
+    return () => clearTimeout(id);
+  }); // corre en cada render: toma siempre los datos más nuevos
+  // Botón "Actualizar Drive": pide el permiso si hace falta (un toque) y sube todo.
+  const actualizarDrive = async (extra=[]) => {
+    const lista = [...new Set([...drivePend, ...extra])];
+    marcarDrive(extra);
+    try { if (!tokenVigente()) await conectarDrive(); }
+    catch(e) { setDriveEstado({error: e.message==="popup_closed"||e.message==="popup_cerrado" ? "Se cerró la ventana de Google sin dar permiso." : e.message}); return false; }
+    await subirDrive(lista);
+    return true;
+  };
+  const exportarPeriodo = (desde, hasta) => actualizarDrive(unidadesDelRango(desde, hasta, { registros, mananaLog, semanaLog, planLog, trimestreLog, anualLog }));
+
   const handleReintentar = async () => {
     if (!user) return;
     setReintentando(true);
@@ -419,6 +469,7 @@ export default function App() {
       <div className="container" style={{padding:"20px 16px 80px"}}>
 
         <AvisoSync errorCarga={errorCarga} pendientes={pendientes} reintentando={reintentando} onReintentar={handleReintentar}/>
+        <AvisoDrive pendientes={drivePend.length} estado={driveEstado} conectado={tokenVigente()} onActualizar={()=>actualizarDrive()}/>
 
         {view==="home" && (
           <Home today={today} mananHoy={mananHoy} nocheHoy={nocheHoy} nocheDisp={nocheDisp}
@@ -457,7 +508,8 @@ export default function App() {
 
         {view==="resumen" && (
           <Resumen registros={registros} mananaLog={mananaLog} semanaLog={semanaLog} planLog={planLog} planTrim={planTrim}
-            mensualLog={mensualLog} trimestreLog={trimestreLog} anualLog={anualLog} today={today} nocheDisp={nocheDisp}/>
+            mensualLog={mensualLog} trimestreLog={trimestreLog} anualLog={anualLog} today={today} nocheDisp={nocheDisp}
+            onExportar={exportarPeriodo} driveEstado={driveEstado}/>
         )}
 
       </div>
