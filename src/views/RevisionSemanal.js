@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { C, card, inp, btnPrimario } from "../theme";
 import { SLabel } from "../components/ui";
 import { MatrizDecision } from "../components/Chispa";
-import { MISION, VISION_ALT, ROLES } from "../content/contenido";
+import { MISION, VISION_ALT, ROLES, nombreRol } from "../content/contenido";
 import { formatDate, dayOfWeek, todayBsAs, addDays } from "../lib/fechas";
 import { trimestreDe, nombreTrimestre } from "../lib/periodos";
 import { mergeMetas } from "../lib/metas";
@@ -13,7 +13,6 @@ import {
 } from "../lib/semanal";
 
 // ─── Piezas chicas ─────────────────────────────────────────────────────
-const nombreRol = (num) => ROLES.find(r => r.num === num)?.nombre || `Rol ${num}`;
 const chip = (activo, color=C.navy, bg=C.celestePale) => ({
   padding:"6px 12px", borderRadius:8, border:`1px solid ${activo?color:C.border}`, cursor:"pointer",
   background:activo?bg:C.surfaceAlt, color:activo?color:C.textMuted, fontSize:12, fontWeight:600, fontFamily:"inherit",
@@ -84,7 +83,7 @@ function sincronizarMetas(items, metas){
 
 // ─── Asistente ─────────────────────────────────────────────────────────
 export default function RevisionSemanal(props){
-  const { W, P, revDoc, planDoc, planLog, semanaLog, registros, mananaLog, todos, pesos, onGuardar, onTodo, planTrim, objetivos } = props;
+  const { W, P, revDoc, planDoc, planLog, semanaLog, registros, mananaLog, todos, pesos, onGuardar, onTodo, planTrim, objetivos, relatoAnio } = props;
   const [rev, setRev]   = useState(()=>revInicial(revDoc));
   const [plan, setPlan] = useState(()=>planInicial(planDoc, W));
   const [error, setError] = useState(null);
@@ -153,7 +152,7 @@ export default function RevisionSemanal(props){
 
       <div style={{fontSize:20,fontFamily:"'Playfair Display',serif",color:C.navy,margin:"4px 0 14px"}}>{paso}. {PASOS[paso-1]}</div>
 
-      {paso===1 && <Paso1/>}
+      {paso===1 && <Paso1 relato={relatoAnio} score={datosSemana(W, registros, mananaLog).score}/>}
       {paso===2 && <Paso2 {...ctx}/>}
       {paso===3 && <Paso3 {...ctx}/>}
       {paso===4 && <Paso4 {...ctx}/>}
@@ -174,10 +173,18 @@ export default function RevisionSemanal(props){
 }
 
 // ─── 1. Reconexión ─────────────────────────────────────────────────────
-function Paso1(){
+// Si la semana vino baja (score < 60%), se suma el relato del día a fin de año.
+export const UMBRAL_SEMANA_BAJA = 60;
+function Paso1({relato, score}){
   return (
     <>
       <div style={sub}>Lectura breve antes de mirar números.</div>
+      {relato && score!==null && score<UMBRAL_SEMANA_BAJA && (
+        <div style={{...card,background:C.goldBg,border:`1px solid ${C.gold}`}}>
+          <SLabel>✦ Un día a fin de año, si cumplo lo que me propuse</SLabel>
+          <div style={{fontSize:14,color:C.textSecond,lineHeight:1.7,whiteSpace:"pre-line"}}>{relato}</div>
+        </div>
+      )}
       <div style={card}>
         <SLabel>✦ Misión personal</SLabel>
         <div style={{fontSize:14,color:C.textSecond,lineHeight:1.7,whiteSpace:"pre-line"}}>{MISION}</div>

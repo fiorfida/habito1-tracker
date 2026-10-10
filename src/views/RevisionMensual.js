@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { C, card, inp, btnPrimario } from "../theme";
 import { SLabel } from "../components/ui";
-import { ROLES } from "../content/contenido";
+import { ROLES_TODOS } from "../content/contenido";
 import { formatDate, dateRange, addDays, todayBsAs } from "../lib/fechas";
 import { rangoMes, nombreMes, mesSiguiente } from "../lib/periodos";
 import { estadisticasRango } from "../lib/estadisticas";
@@ -35,7 +35,7 @@ export function resumenDelMes(mesKey, {registros, mananaLog, semanaLog, planLog}
   const reflexiones = semanas.filter(W=>esV2(semanaLog[W])).map(W=>({W, r:semanaLog[W].reflexion||{}}));
   const preocupaciones = reflexiones.flatMap(x=>x.r.preocupaciones||[]);
   return { inicio, fin, e, total,
-    porRol: ROLES.map(r=>({rol:r, min:min[r.num]||0, pct: total?Math.round((min[r.num]||0)/total*100):0})),
+    porRol: ROLES_TODOS.filter(r=>!r.archivado||min[r.num]).map(r=>({rol:r, min:min[r.num]||0, pct: total?Math.round((min[r.num]||0)/total*100):0})),
     reflexiones, enControl: preocupaciones.filter(p=>p.control===true).length, preocupaciones: preocupaciones.length };
 }
 

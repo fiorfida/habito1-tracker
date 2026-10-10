@@ -1,5 +1,7 @@
 // ─── Contenido fijo ────────────────────────────────────────────────────
-export const MISION = `Soy Facundo Iorfida y soy dueño de mi vida: la vivo como yo defino, en base a lo que creo y valoro.
+// Textos base. La revisión anual los puede editar: lo editado vive en
+// config/contenido y se aplica con aplicarContenido() (ver abajo).
+export const MISION_BASE = `Soy Facundo Iorfida y soy dueño de mi vida: la vivo como yo defino, en base a lo que creo y valoro.
 
 Me guío por estos principios: libertad, honestidad, transparencia y servicio.
 
@@ -18,7 +20,7 @@ Elijo vivir con intención, sabiendo que cada día me da la chance de escribir u
 export const VISION_ALT = "Visión personal a 5 años: familia, paternidad, trabajo, libertad financiera, familia extendida, amigos y comunidad, Racing.";
 
 // La identidad de cada rol es `num`: los registros guardan el número, nunca el nombre.
-export const ROLES = [
+export const ROLES_BASE = [
   { num:"1", nombre:"Facundo",              desc:"Desarrollo personal, hábitos, cuerpo y mente." },
   { num:"2", nombre:"Papá de Francesca",    desc:"Padre presente, amoroso, que lidera con el ejemplo." },
   { num:"3", nombre:"Facundito",            desc:"Compañero, presente, que elige a Flo todos los días." },
@@ -134,3 +136,17 @@ export const PREGUNTAS_SEMANA = [
 ];
 
 
+
+// ─── Contenido editable (revisión anual) ───────────────────────────────
+// Live bindings: quien importa MISION / ROLES ve siempre el valor vigente.
+// ROLES = roles activos (planificación); ROLES_TODOS incluye los archivados
+// (para nombrar roles en registros históricos).
+export let MISION = MISION_BASE;
+export let ROLES = ROLES_BASE;
+export let ROLES_TODOS = ROLES_BASE;
+export function aplicarContenido(cfg) {
+  MISION = cfg?.mision || MISION_BASE;
+  ROLES_TODOS = cfg?.roles?.length ? cfg.roles : ROLES_BASE;
+  ROLES = ROLES_TODOS.filter(r => !r.archivado);
+}
+export const nombreRol = (num) => ROLES_TODOS.find(r => r.num === num)?.nombre || `Rol ${num}`;

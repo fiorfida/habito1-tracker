@@ -286,7 +286,7 @@ function Adaptacion({today, plan, m, set, delPlan, candidatas, tarea}){
 function MisRoles(){
   return (
     <div style={card}>
-      <SLabel>✦ Mis 8 roles</SLabel>
+      <SLabel>✦ Mis {ROLES.length} roles</SLabel>
       <div className="roles-grid">
         {ROLES.map((r,i)=>(
           <div key={r.num} style={{display:"flex",gap:12,alignItems:"flex-start",paddingBottom:i<ROLES.length-1?14:0,marginBottom:i<ROLES.length-1?14:0,borderBottom:i<ROLES.length-1?`1px solid ${C.border}`:"none"}}>

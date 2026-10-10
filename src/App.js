@@ -9,7 +9,7 @@ import { ventanaTrimestral, ventanaAnual, ventanaMensual, nombreTrimestre, nombr
 import { HABITOS_SEGUIDOS, cumplimientoHabito } from "./lib/habitos";
 import { fraseDelDia } from "./lib/frases";
 import { semanaPlanDe, esV2, revisionCompleta } from "./lib/semanal";
-import { CHISPA_DEFAULT } from "./content/contenido";
+import { CHISPA_DEFAULT, aplicarContenido } from "./content/contenido";
 import {
   KEY_NOCHE, KEY_MANANA, KEY_SEMANA, KEY_TRIMESTRE, KEY_ANUAL,
   fbGet, fbSet, leerPendientes, escribirPendientes, descargarBackup, nuevoId,
@@ -40,6 +40,9 @@ export default function App() {
   const [planTrim,    setPlanTrim]    = useState({}); // planTrimestral/{AAAA-QN}
   const [mensualLog,  setMensualLog]  = useState({}); // mensual/{AAAA-MM} del mes revisado
   const [frasesExtra, setFrasesExtra] = useState([]); // config/lenguaje: frases reactivas propias
+  const [contenidoCfg,setContenidoCfg]= useState(null); // config/contenido: misión y roles editados
+  const [agenda,      setAgenda]      = useState(null); // config/agenda: trimestrales y semanal
+  const [habitos,     setHabitos]     = useState({}); // habitos/{id} del plan anual
   const [chispaCfg,   setChispaCfg]   = useState(null); // lo guardado en config/chispa (null = usar valores por defecto)
   const [, setReloj] = useState(0); // re-render cada minuto: habilita la Noche a las 19:00 y cambia de día a medianoche
 
@@ -70,7 +73,7 @@ export default function App() {
   // ── Load data when user logs in ──
   const loadFromFirebase = useCallback(async (uid) => {
     setSyncing(true);
-    const [r, m, s, t, a, cfg, pl, td, ob, pt, me] = await Promise.all([
+    const [r, m, s, t, a, cfg, pl, td, ob, pt, me, hb] = await Promise.all([
       fbGet(uid, "noche"),
       fbGet(uid, "manana"),
       fbGet(uid, "semana"),
@@ -82,8 +85,9 @@ export default function App() {
       fbGet(uid, "objetivos"),
       fbGet(uid, "planTrimestral"),
       fbGet(uid, "mensual"),
+      fbGet(uid, "habitos"),
     ]);
-    const fallidas = [["Noche",r],["Mañana",m],["Semanal",s],["Trimestral",t],["Anual",a],["Configuración",cfg],["Plan",pl],["Pendientes",td],["Objetivos",ob],["Plan trimestral",pt],["Mensual",me]]
+    const fallidas = [["Noche",r],["Mañana",m],["Semanal",s],["Trimestral",t],["Anual",a],["Configuración",cfg],["Plan",pl],["Pendientes",td],["Objetivos",ob],["Plan trimestral",pt],["Mensual",me],["Hábitos",hb]]
       .filter(([,v])=>v===null).map(([n])=>n);
     setErrorCarga(fallidas.length ? fallidas : null);
     if (r) { setRegistros(r); try { localStorage.setItem(KEY_NOCHE,  JSON.stringify(r)); } catch {} }
@@ -92,12 +96,16 @@ export default function App() {
     if (t) { setTrimestreLog(t); try { localStorage.setItem(KEY_TRIMESTRE, JSON.stringify(t)); } catch {} }
     if (a) { setAnualLog(a); try { localStorage.setItem(KEY_ANUAL, JSON.stringify(a)); } catch {} }
     // Cada documento de config guarda su contenido bajo una clave con su mismo nombre.
-    if (cfg) { setChispaCfg(cfg.chispa?.chispa || null); setFrasesExtra(cfg.lenguaje?.lenguaje?.extras || []); }
+    if (cfg) {
+      setChispaCfg(cfg.chispa?.chispa || null); setFrasesExtra(cfg.lenguaje?.lenguaje?.extras || []);
+      setContenidoCfg(cfg.contenido?.contenido || null); setAgenda(cfg.agenda?.agenda || null);
+    }
     if (pl) setPlanLog(pl);
     if (td) setTodos(td);
     if (ob) setObjetivos(ob);
     if (pt) setPlanTrim(pt);
     if (me) setMensualLog(me);
+    if (hb) setHabitos(hb);
     setSyncing(false);
   }, []);
 
@@ -242,6 +250,32 @@ export default function App() {
     setFrasesExtra(extras);
     return guardarNube("config", "lenguaje", {lenguaje:{extras}}, "Frases reactivas");
   };
+  // Fase 4c: revisión anual, contenido editable, agenda y hábitos del año.
+  const handleGuardarAnual = async (Y, data) => {
+    setAnualLog(prev => { const next = {...prev, [Y]:data}; try { localStorage.setItem(KEY_ANUAL, JSON.stringify(next)); } catch {} return next; });
+    return guardarNube("anual", String(Y), data, `Revisión anual ${Y}`);
+  };
+  const handleGuardarContenido = async (cambios) => {
+    const nuevo = {...(contenidoCfg||{}), ...cambios};
+    setContenidoCfg(nuevo);
+    return guardarNube("config", "contenido", {contenido:nuevo}, "Misión y roles");
+  };
+  const handleGuardarAgenda = async (cambios) => {
+    const nueva = {...(agenda||{}), ...cambios};
+    setAgenda(nueva);
+    return guardarNube("config", "agenda", {agenda:nueva}, "Agenda de revisiones");
+  };
+  const handleGuardarHabito = async (id, cambios) => {
+    const h = {...habitos[id], ...cambios};
+    setHabitos(prev => ({...prev, [id]:h}));
+    return guardarNube("habitos", id, h, `Hábito "${(h.texto||"").slice(0,30)}"`);
+  };
+  // Al completar la Parte 1, la evaluación de cada objetivo queda en el objetivo.
+  const persistirEvaluaciones = async (evaluaciones) => {
+    for (const [id, ev] of Object.entries(evaluaciones||{})) {
+      if (ev?.categoria && objetivos[id]) await handleGuardarObjetivo(id, {estado:ev.categoria, evaluacion:ev});
+    }
+  };
   const handleGuardarObjetivo = async (id, cambios) => {
     const o = {...objetivos[id], ...cambios};
     setObjetivos(prev => ({...prev, [id]:o}));
@@ -273,24 +307,30 @@ export default function App() {
   const nocheDisp   = nocheDisponible(today);
   const frase       = fraseDelDia();
   const chispa      = {...CHISPA_DEFAULT, ...(chispaCfg||{})};
+  aplicarContenido(contenidoCfg); // misión y roles vigentes (editables desde la anual)
 
   // Semanal: nunca "vencida" (la herramienta es sierva, no ama).
   const W            = relevantWeekStart(today);
   const P            = semanaPlanDe(W);
   const revW         = semanaLog[W];
-  const esSabado     = new Date(today+"T12:00:00").getDay()===6;
+  const diaSemanal   = agenda?.semanal?.dia ?? 6; // sábado por defecto
+  const esSabado     = new Date(today+"T12:00:00").getDay()===diaSemanal;
   const semanaEstado = revisionCompleta(revW) ? "completada"
     : esV2(revW) ? "encurso" : esSabado ? "hoy" : "espera";
 
   // Trimestral y anual: dentro de su ventana, o "Próxima: dd/mm" (nunca vencidas).
-  const ventanaT    = ventanaTrimestral(today);
+  const ventanaT    = ventanaTrimestral(today, agenda);
   const revT        = ventanaT.abierta ? trimestreLog[ventanaT.key] : null;
   const trimEstado  = !ventanaT.abierta ? "espera" : revT?.estado==="completa" ? "completada" : revT?.v===2 ? "encurso" : "hoy";
   const ventanaM    = ventanaMensual(today);
   const revM        = ventanaM.abierta ? mensualLog[ventanaM.key] : null;
   const mensualEstado = !ventanaM.abierta ? "espera" : revM?.estado==="completa" ? "completada" : revM ? "encurso" : "hoy";
   const ventanaA    = ventanaAnual(today);
-  const anualEstado = "espera"; // la revisión anual llega en la entrega 4c
+  const partesA     = ventanaA.abierta ? (anualLog[ventanaA.key]?.partes||{}) : {};
+  const nCompletas  = [1,2,3,4,5].filter(n=>partesA[n]?.estado==="completa").length;
+  const anualEstado = !ventanaA.abierta ? "espera" : nCompletas===5 ? "completada" : Object.keys(partesA).length ? "encurso" : "hoy";
+  // Relato del día a fin de año (Parte 5 de la anual anterior): se muestra en semanas bajas.
+  const relatoAnio  = anualLog[String(Number(today.slice(0,4))-1)]?.partes?.[5]?.relato || "";
 
   const periodicaPendiente = [semanaEstado, mensualEstado, trimEstado].some(e=>e==="hoy"||e==="encurso");
 
@@ -385,7 +425,7 @@ export default function App() {
             semanaEstado={semanaEstado} trimEstado={trimEstado} anualEstado={anualEstado} irA={irA}
             mensualEstado={mensualEstado} mensualEtiqueta={ventanaM.abierta?(mensualEstado==="hoy"?"Disponible":undefined):`Próxima ${formatDate(ventanaM.proxima).slice(0,5)}`}
             trimEtiqueta={ventanaT.abierta?undefined:`Próxima ${formatDate(ventanaT.proxima).slice(0,5)}`}
-            anualEtiqueta={ventanaA.abierta?"Disponible":`Próxima ${formatDate(ventanaA.proxima).slice(0,5)}`}/>
+            anualEtiqueta={ventanaA.abierta?(anualEstado==="hoy"?"Disponible":undefined):`Próxima ${formatDate(ventanaA.proxima).slice(0,5)}`}/>
         )}
 
         {view==="manana" && <Manana key={today+(syncing?"-cargando":"")} today={today} doc={mananaLog[today]} plan={planLog[getWeekStart(today)]} mananaLog={mananaLog} frase={frase} onGuardar={handleGuardarManana} enFoco={enFoco}/>}
@@ -408,7 +448,10 @@ export default function App() {
             onGuardarMensual={handleGuardarMensual} onGuardarFrases={handleGuardarFrases}
             ventanaT={ventanaT} ventanaA={ventanaA} trimestreLog={trimestreLog} planTrim={planTrim} objetivos={objetivos}
             onGuardarTrimestral={handleGuardarTrimestral} onGuardarPlanTrim={handleGuardarPlanTrim} onGuardarObjetivo={handleGuardarObjetivo}
-            chispa={chispa} onGuardarChispa={handleGuardarChispa}/>
+            chispa={chispa} onGuardarChispa={handleGuardarChispa}
+            anualLog={anualLog} habitos={habitos} contenidoCfg={contenidoCfg} agenda={agenda} relatoAnio={relatoAnio}
+            onGuardarAnual={handleGuardarAnual} onGuardarContenido={handleGuardarContenido} onGuardarAgenda={handleGuardarAgenda}
+            onGuardarHabito={handleGuardarHabito} persistirEvaluaciones={persistirEvaluaciones}/>
         )}
 
         {view==="resumen" && (

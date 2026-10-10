@@ -2,7 +2,7 @@
 // W = domingo de la semana revisada (clave de semana/{W}).
 // P = W + 7 = domingo de la semana planificada (clave de plan/{P}).
 import { addDays, dateRange, dayOfWeek } from "./fechas";
-import { ROLES } from "../content/contenido";
+import { ROLES, ROLES_TODOS } from "../content/contenido";
 
 export const PASOS = [
   "Reconexión", "Datos de la semana", "Realizado vs. plan", "Reflexión semanal",
@@ -75,10 +75,10 @@ export function disponibleMin(capacidad, P) {
 // % de tiempo por rol: lo ya agendado (Calendar) + lo planificado en el inventario.
 export function tiempoPorRol(items, agendadoPorRol) {
   const min = {};
-  ROLES.forEach(r => { min[r.num] = (Number(agendadoPorRol?.[r.num]) || 0) * 60; });
+  ROLES_TODOS.forEach(r => { min[r.num] = (Number(agendadoPorRol?.[r.num]) || 0) * 60; });
   itemsActivos(items).forEach(i => { if (min[i.rol] !== undefined) min[i.rol] += i.minutos || 0; });
   const total = Object.values(min).reduce((a, b) => a + b, 0);
-  return ROLES.map(r => ({ rol: r, min: min[r.num], pct: total ? Math.round(min[r.num] / total * 100) : 0 }));
+  return ROLES_TODOS.filter(r => !r.archivado || min[r.num]).map(r => ({ rol: r, min: min[r.num], pct: total ? Math.round(min[r.num] / total * 100) : 0 }));
 }
 
 // Carga por día: primero los fijos, después los "a asignar" con día elegido.

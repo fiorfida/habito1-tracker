@@ -10,6 +10,7 @@ import RevisionTrimestral from "./RevisionTrimestral";
 import PlanTrimestral from "./PlanTrimestral";
 import ObjetivosAnio from "./ObjetivosAnio";
 import Pendientes from "./Pendientes";
+import RevisionAnual from "./RevisionAnual";
 import RevisionMensual from "./RevisionMensual";
 import CierreMensual from "../components/CierreMensual";
 
@@ -119,12 +120,26 @@ function Trimestral(props){
 
 function Anual(props){
   const { ventanaA, objetivos } = props;
+  if (ventanaA.abierta) {
+    const Y = Number(ventanaA.key);
+    return (
+      <div>
+        <Banner color={C.warn} bg={C.warnBg} borde={C.warn} titulo={`⭐ Revisión anual ${Y} disponible`}
+          detalle={`Hasta el ${formatDate(ventanaA.hasta)} · guía anual de Superhábitos · en varias sesiones`}/>
+        <RevisionAnual key={Y} Y={Y} doc={props.anualLog[Y]} objetivos={objetivos} planTrim={props.planTrim}
+          mensualLog={props.mensualLog} semanaLog={props.semanaLog} planLog={props.planLog} trimestreLog={props.trimestreLog}
+          habitos={props.habitos} contenidoCfg={props.contenidoCfg} agenda={props.agenda} pesos={props.chispa.pesos}
+          onGuardar={props.onGuardarAnual} onGuardarObjetivo={props.onGuardarObjetivo} onGuardarHabito={props.onGuardarHabito}
+          onGuardarContenido={props.onGuardarContenido} onGuardarAgenda={props.onGuardarAgenda} persistirEvaluaciones={props.persistirEvaluaciones}/>
+      </div>
+    );
+  }
   const y = Number(todayBsAs().slice(0,4));
   const [anio, setAnio] = useState(y);
   return (
     <div>
       <Banner color={C.textSecond} bg={C.surfaceAlt} borde={C.border}
-        titulo={ventanaA.abierta ? `⭐ Revisión anual ${ventanaA.key}: llega con la entrega 4c` : `⭐ Próxima revisión anual: ${formatDate(ventanaA.proxima)}`}
+        titulo={`⭐ Próxima revisión anual: ${formatDate(ventanaA.proxima)}`}
         detalle="Mientras tanto, acá cargás y ajustás los objetivos del año."/>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
         <SLabel>Objetivos del año</SLabel>
@@ -154,13 +169,13 @@ function Semanal(props){
     <div>
       <div style={{...card, background:b.bg, border:`1px solid ${b.borde}`, marginBottom:16}}>
         <div style={{fontSize:13,fontWeight:600,color:b.color}}>{b.t}</div>
-        <div style={{fontSize:12,color:C.textMuted,marginTop:2}}>Sábados 9:30 · objetivo con el hábito consolidado: 30 a 60 min</div>
+        <div style={{fontSize:12,color:C.textMuted,marginTop:2}}>{(props.agenda?.semanal?.dia??6)===0?"Domingos":"Sábados"} {props.agenda?.semanal?.hora||"9:30"} · objetivo con el hábito consolidado: 30 a 60 min</div>
       </div>
 
       <RevisionSemanal key={W} W={W} P={P} revDoc={semanaLog[W]} planDoc={planLog[P]}
         planLog={planLog} semanaLog={semanaLog} registros={props.registros} mananaLog={props.mananaLog}
         todos={props.todos} pesos={props.chispa.pesos} onGuardar={props.onGuardarRevision} onTodo={props.onTodo}
-        planTrim={props.planTrim} objetivos={props.objetivos}/>
+        planTrim={props.planTrim} objetivos={props.objetivos} relatoAnio={props.relatoAnio}/>
 
       {anteriores.length>0 && (
         <div style={{marginTop:28}}>
