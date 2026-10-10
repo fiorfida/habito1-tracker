@@ -32,7 +32,7 @@ export function resumenDelMes(mesKey, {registros, mananaLog, semanaLog, planLog}
   semanas.forEach(P => tiempoPorRol(planLog[P]?.items||[], planLog[P]?.agendadoPorRol).forEach(x => { min[x.rol.num] = (min[x.rol.num]||0) + x.min; }));
   const total = Object.values(min).reduce((a,b)=>a+b,0);
   // Reflexiones de las semanas revisadas que terminan en el mes.
-  const reflexiones = semanas.filter(W=>esV2(semanaLog[W])).map(W=>({W, r:semanaLog[W].reflexion||{}}));
+  const reflexiones = [...semanas].reverse().filter(W=>esV2(semanaLog[W])).map(W=>({W, r:semanaLog[W].reflexion||{}}));
   const preocupaciones = reflexiones.flatMap(x=>x.r.preocupaciones||[]);
   return { inicio, fin, e, total,
     porRol: ROLES_TODOS.filter(r=>!r.archivado||min[r.num]).map(r=>({rol:r, min:min[r.num]||0, pct: total?Math.round((min[r.num]||0)/total*100):0})),
@@ -176,7 +176,7 @@ function Resumen({res}){
 function Auditoria({auditoria, notas, registros, inicio, fin, rev, set, frasesExtra, onGuardarFrases}){
   const [nueva, setNueva] = useState("");
   const [abierta, setAbierta] = useState(null);
-  const diasNo = dateRange(inicio, fin).filter(d=>registros[d] && registros[d].p2===false);
+  const diasNo = dateRange(inicio, fin).reverse().filter(d=>registros[d] && registros[d].p2===false);
   const top = auditoria[0];
   const frase = rev.auditoria.frase || top?.frase || "";
   const agregar = async () => { const f = nueva.trim().toLowerCase(); if (!f || frasesExtra.includes(f) || FRASES_REACTIVAS.includes(f)) return; await onGuardarFrases([...frasesExtra, f]); setNueva(""); };

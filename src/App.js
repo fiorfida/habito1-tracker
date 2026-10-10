@@ -436,7 +436,8 @@ export default function App() {
         )}
 
         {view==="historial" && (
-          <Historial stats={stats} registros={registros} mananaLog={mananaLog} semanaLog={semanaLog} planLog={planLog} today={today} nocheDisp={nocheDisp}/>
+          <Historial stats={stats} registros={registros} mananaLog={mananaLog} semanaLog={semanaLog} planLog={planLog} planTrim={planTrim}
+            mensualLog={mensualLog} trimestreLog={trimestreLog} anualLog={anualLog} today={today} nocheDisp={nocheDisp}/>
         )}
 
         {view==="periodica" && (
@@ -455,8 +456,8 @@ export default function App() {
         )}
 
         {view==="resumen" && (
-          <Resumen stats={stats} registros={registros} semanaLog={semanaLog}
-            trimestreLog={trimestreLog} anualLog={anualLog} today={today}/>
+          <Resumen registros={registros} mananaLog={mananaLog} semanaLog={semanaLog} planLog={planLog} planTrim={planTrim}
+            mensualLog={mensualLog} trimestreLog={trimestreLog} anualLog={anualLog} today={today} nocheDisp={nocheDisp}/>
         )}
 
       </div>

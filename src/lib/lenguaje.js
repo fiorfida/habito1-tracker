@@ -30,6 +30,7 @@ export function auditarLenguaje(notas, frases) {
         ocurrencias.push({ fecha: n.fecha, fragmento: n.texto.slice(Math.max(0, i - 40), i + f.length + 40).trim() });
       }
     });
+    ocurrencias.sort((a, b) => b.fecha.localeCompare(a.fecha)); // más reciente primero
     return { frase, cantidad: ocurrencias.length, ocurrencias };
   }).filter(x => x.cantidad > 0).sort((a, b) => b.cantidad - a.cantidad);
 }

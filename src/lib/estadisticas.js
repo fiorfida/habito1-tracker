@@ -5,7 +5,10 @@ import { HABITOS_SEGUIDOS, cumplimientoHabito } from "./habitos";
 const pct = (a, b) => b ? Math.round(a / b * 100) : null;
 
 // Hoy no cuenta como incumplido hasta que termina.
-export function estadisticasRango(desde, hasta, hoy, { registros, mananaLog }) {
+export function estadisticasRango(desdePedido, hasta, hoy, { registros, mananaLog }) {
+  // Los días anteriores al primer registro no cuentan como incumplidos.
+  const primerRegistro = [...Object.keys(registros), ...Object.keys(mananaLog)].sort()[0] || hoy;
+  const desde = desdePedido < primerRegistro ? primerRegistro : desdePedido;
   const fin = hasta < hoy ? hasta : hoy;
   const dias = fin < desde ? [] : dateRange(desde, fin);
   const cerradosNoche  = dias.filter(d => d < hoy || registros[d]);
@@ -32,5 +35,5 @@ export function estadisticasRango(desde, hasta, hoy, { registros, mananaLog }) {
 export function ajustesRango(desde, hasta, mananaLog) {
   return Object.values(mananaLog || {})
     .filter(m => m.fecha >= desde && m.fecha <= hasta && (m.misionAjuste || m.visionAjuste))
-    .sort((a, b) => a.fecha.localeCompare(b.fecha));
+    .sort((a, b) => b.fecha.localeCompare(a.fecha)); // más reciente primero
 }
