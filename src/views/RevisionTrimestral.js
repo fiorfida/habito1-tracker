@@ -8,6 +8,7 @@ import { estadisticasRango, ajustesRango } from "../lib/estadisticas";
 import { esV2, revisionCompleta } from "../lib/semanal";
 import { objetivosDelAnio } from "./ObjetivosAnio";
 import PlanTrimestral from "./PlanTrimestral";
+import CierreMensual from "../components/CierreMensual";
 
 const PASOS = ["Recolección", "Misión y visión", "Objetivos del trimestre", "Hábitos y objetivos anuales", "Planificación", "Salida"];
 const nombreRol = (num) => ROLES.find(r=>r.num===num)?.nombre || `Rol ${num}`;
@@ -96,7 +97,7 @@ export default function RevisionTrimestral(props){
 }
 
 // ─── Fase 0: recolección (precargada) ──────────────────────────────────
-function Recoleccion({K, registros, mananaLog, semanaLog}){
+function Recoleccion({K, registros, mananaLog, semanaLog, mensualLog}){
   const { inicio, fin } = partesTrimestre(K);
   const hoy = todayBsAs();
   const e = estadisticasRango(inicio, fin, hoy, {registros, mananaLog});
@@ -159,7 +160,9 @@ function Recoleccion({K, registros, mananaLog, semanaLog}){
       </div>
       <div style={card}>
         <SLabel>Cierres mensuales</SLabel>
-        <Pendiente>Pendiente de carga — la revisión mensual llega en la entrega 4b.</Pendiente>
+        {partesTrimestre(K).meses.filter(m=>mensualLog?.[m]).length===0
+          ? <Pendiente>Sin cierres mensuales cargados para este trimestre.</Pendiente>
+          : partesTrimestre(K).meses.filter(m=>mensualLog?.[m]).map(m=><CierreMensual key={m} mesKey={m} doc={mensualLog[m]}/>)}
       </div>
     </>
   );

@@ -31,7 +31,7 @@ function SiNo({valor, onChange}){
 }
 const pregunta = { fontSize:15, fontWeight:500, color:C.textPrimary, lineHeight:1.5, marginBottom:12 };
 
-export default function Manana({today, doc, plan, mananaLog, frase, onGuardar}){
+export default function Manana({today, doc, plan, mananaLog, frase, onGuardar, enFoco}){
   const [m, setM] = useState(()=>inicial(doc));
   const [error, setError] = useState(null);
   const [guardando, setGuardando] = useState(false);
@@ -75,6 +75,13 @@ export default function Manana({today, doc, plan, mananaLog, frase, onGuardar}){
         </div>
       </div>
 
+      {enFoco && (
+        <div style={{fontSize:12,color:C.textSecond,margin:"-4px 2px 12px",display:"flex",gap:10,flexWrap:"wrap"}}>
+          <span style={{fontWeight:700,color:C.navy}}>Este mes:</span>
+          {enFoco.cualidad && <span>✦ {enFoco.cualidad}</span>}
+          {enFoco.habitos.map(h=><span key={h.nombre}>{h.nombre} {h.pct===null?"—":`${h.pct}%`}</span>)}
+        </div>
+      )}
       <div style={{...card,background:C.celestePale,border:`1px solid ${C.celeste}`,marginBottom:16}}>
         <div style={{fontSize:15,fontStyle:"italic",color:C.navy,lineHeight:1.6}}>"{frase.texto}"</div>
         <div style={{fontSize:13,color:C.celeste,fontWeight:600,marginTop:8,textAlign:"right"}}>— {frase.autor}</div>
