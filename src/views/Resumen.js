@@ -33,7 +33,8 @@ function mover(tipo, a, dir){
 }
 
 export default function Resumen(props){
-  const { registros, mananaLog, semanaLog, planLog, planTrim, mensualLog, trimestreLog, anualLog, today, nocheDisp } = props;
+  const { registros, mananaLog, semanaLog, planLog, planTrim, mensualLog, trimestreLog, anualLog, today, nocheDisp, onExportar, driveEstado } = props;
+  const [exportando, setExportando] = useState(null); // null | "subiendo" | "fin" | "error"
   const [tipo, setTipo] = useState("mes");
   const [ancla, setAncla] = useState(today);
   const { desde, hasta, etiqueta } = rango(tipo, ancla);
@@ -77,6 +78,16 @@ export default function Resumen(props){
         <button onClick={()=>setAncla(mover(tipo,ancla,-1))} style={flecha(true)} aria-label="Período anterior">◀</button>
         <div style={{flex:1,textAlign:"center",fontSize:15,fontWeight:700,color:C.navy,textTransform:tipo==="mes"?"capitalize":"none"}}>{etiqueta}</div>
         <button onClick={()=>haySiguiente&&setAncla(siguiente)} disabled={!haySiguiente} style={flecha(haySiguiente)} aria-label="Período siguiente">▶</button>
+      </div>
+
+      <div style={{display:"flex",justifyContent:"flex-end",alignItems:"center",gap:10,marginTop:-6,marginBottom:12}}>
+        {exportando==="fin" && driveEstado==="ok" && <span style={{fontSize:12,color:C.yes}}>✓ Período exportado a Drive</span>}
+        {(exportando==="error" || (exportando==="fin" && driveEstado!=="ok")) && <span style={{fontSize:12,color:C.no}}>No se completó: mirá el aviso de arriba</span>}
+        <button onClick={async()=>{ setExportando("subiendo"); const ok = await onExportar(desde, hasta<today?hasta:today); setExportando(ok===false?"error":"fin"); }}
+          disabled={exportando==="subiendo"||driveEstado==="subiendo"}
+          style={{padding:"6px 12px",borderRadius:8,border:`1px solid ${C.celeste}`,background:C.surface,color:C.celeste,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+          {exportando==="subiendo"||driveEstado==="subiendo" ? "Exportando…" : "📄 Exportar período a Drive"}
+        </button>
       </div>
 
       {tipo==="dia" ? (
