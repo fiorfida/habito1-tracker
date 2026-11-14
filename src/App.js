@@ -25,6 +25,7 @@ import Noche from "./views/Noche";
 import Historial from "./views/Historial";
 import Periodica from "./views/Periodica";
 import Resumen from "./views/Resumen";
+import { finDefinido } from "./lib/fin";
 
 // ─── App ──────────────────────────────────────────────────────────────
 export default function App() {
@@ -56,7 +57,7 @@ export default function App() {
 
   const [form, setForm] = useState({
     fecha:todayBsAs(), p1:null,p1_nota:"",p2:null,p2_nota:"",p3:null,p3_nota:"",p4:null,p4_nota:"",
-    conflicto:null, conflicto_nota:"", compromisoCumplido:null, tareaClaveHecha:null,
+    conflicto:null, conflicto_nota:"", compromisoCumplido:null, tareaClaveHecha:null, finCumplido:null,
   });
   const [savedNoche,  setSavedNoche]  = useState(false);
   const [periodicaSub,   setPeriodicaSub]   = useState("semanal");
@@ -145,10 +146,10 @@ export default function App() {
     if (r) {
       setForm(f => ({...f, p1:r.p1, p1_nota:r.p1_nota??"", p2:r.p2, p2_nota:r.p2_nota??"",
         p3:r.p3, p3_nota:r.p3_nota??"", p4:r.p4??null, p4_nota:r.p4_nota??"",
-        conflicto:r.conflicto??null, conflicto_nota:r.conflicto_nota??"", compromisoCumplido:r.compromisoCumplido??null, tareaClaveHecha:r.tareaClaveHecha??null}));
+        conflicto:r.conflicto??null, conflicto_nota:r.conflicto_nota??"", compromisoCumplido:r.compromisoCumplido??null, tareaClaveHecha:r.tareaClaveHecha??null, finCumplido:r.fin?.cumplido??null}));
     } else {
       setForm(f => ({...f, p1:null,p1_nota:"",p2:null,p2_nota:"",p3:null,p3_nota:"",p4:null,p4_nota:"",
-        conflicto:null, conflicto_nota:"", compromisoCumplido:null, tareaClaveHecha:null}));
+        conflicto:null, conflicto_nota:"", compromisoCumplido:null, tareaClaveHecha:null, finCumplido:null}));
     }
   }, [form.fecha, registros]);
 
@@ -239,13 +240,20 @@ export default function App() {
 
   // ── Handlers ──
   const handleGuardarNoche = async () => {
-    if (form.p1===null||form.p2===null||form.p3===null||form.p4===null) return;
+    // Con "Mi fin para hoy" definido, una sola respuesta cubre H2 y la tarea clave:
+    // p4 = Sí solo si lo viví ("A medias" cuenta como No) y tareaClaveHecha = la misma respuesta.
+    // Así score, revisiones, Proactividad y export siguen leyendo los campos de siempre.
+    const conFin = finDefinido(mananaLog[form.fecha]);
+    const p4 = conFin ? (form.finCumplido===null ? null : form.finCumplido==="si") : form.p4;
+    if (form.p1===null||form.p2===null||form.p3===null||p4===null) return;
     const updated = {...registros, [form.fecha]:{
       fecha:form.fecha, p1:form.p1, p1_nota:form.p1_nota,
       p2:form.p2, p2_nota:form.p2_nota, p3:form.p3, p3_nota:form.p3_nota,
-      p4:form.p4, p4_nota:form.p4_nota,
+      p4, p4_nota:form.p4_nota,
       conflicto:form.conflicto, conflicto_nota:form.conflicto?form.conflicto_nota:"",
-      compromisoCumplido:form.compromisoCumplido, tareaClaveHecha:form.tareaClaveHecha,
+      compromisoCumplido:form.compromisoCumplido, tareaClaveHecha:conFin ? form.finCumplido : form.tareaClaveHecha,
+      // "Mi fin para hoy": solo se escribe si hay fin (o si ya existía, para poder borrarlo).
+      ...((conFin || registros[form.fecha]?.fin) ? {fin:{cumplido:conFin ? form.finCumplido : null}} : {}),
     }};
     if (await persistNoche(updated)) flashGuardado(setSavedNoche);
   };

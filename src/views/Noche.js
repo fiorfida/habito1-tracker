@@ -1,6 +1,7 @@
 import { C, card, inp, lbl } from "../theme";
 import { PREGUNTAS_H1, PREGUNTA_H2 } from "../content/contenido";
 import { addDays, dayOfWeek, formatDate, nocheDisponible, NOCHE_DESDE } from "../lib/fechas";
+import { finDefinido, partesFin, FIN_CUMPLIDO } from "../lib/fin";
 
 // `neutro`: el Sí no es "bueno" ni el No "malo" (p. ej. ¿hubo conflicto?).
 function SiNo({valor, onChange, neutro}){
@@ -34,13 +35,43 @@ function Cumplimiento({titulo, texto, vacio, valor, onChange}){
   );
 }
 
+// 🎯 Mi fin para hoy: la frase de la mañana (solo lectura) y si lo viví.
+// Reemplaza a H2 — Alineación y a "¿Hice la tarea más importante?" (se derivan al guardar, ver App.js).
+const NOTA_H2 = "¿Qué rol quedó más alineado hoy? ¿Cuál quedó en deuda?";
+function FinDelDia({manana, form, setForm}){
+  const p = partesFin(manana);
+  const valor = form.finCumplido;
+  const colores = { si:{fg:C.yes,bg:C.yesBg}, parcial:{fg:C.warn,bg:C.warnBg}, no:{fg:C.no,bg:C.noBg} };
+  return (
+    <div style={{...card,borderLeft:`4px solid ${C.gold}`}}>
+      <div style={{fontSize:11,letterSpacing:2,color:C.gold,textTransform:"uppercase",marginBottom:8,fontWeight:700}}>🎯 Mi fin para hoy</div>
+      <div style={{fontSize:15,lineHeight:1.6,color:C.textPrimary,background:C.goldBg,borderRadius:8,padding:"12px 14px",marginBottom:14}}>
+        Hoy priorizo <strong style={{color:C.navy}}>{p.rol}</strong>, guiado por <strong style={{color:C.navy}}>{p.principio}</strong>: <strong style={{color:C.navy}}>{p.tarea}</strong>.
+      </div>
+      <div style={{fontSize:15,color:C.textPrimary,marginBottom:4,lineHeight:1.5,fontWeight:500}}>¿Viviste tu fin de hoy?</div>
+      <div style={{fontSize:12,color:C.textMuted,marginBottom:12,fontStyle:"italic"}}>Hice la tarea y la viví en ese rol, con ese principio. "A medias" cuenta como No en Alineación.</div>
+      <div style={{display:"flex",gap:8,marginBottom:12}}>
+        {FIN_CUMPLIDO.map(o=>(
+          <button key={o.v} onClick={()=>setForm({...form, finCumplido:valor===o.v?null:o.v})} style={{flex:1,padding:"10px 0",borderRadius:8,border:"2px solid",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,
+            background:valor===o.v?colores[o.v].bg:C.surfaceAlt,color:valor===o.v?colores[o.v].fg:C.textMuted,borderColor:valor===o.v?colores[o.v].fg:C.border}}>{o.t}</button>
+        ))}
+      </div>
+      <textarea placeholder={NOTA_H2} value={form[`${PREGUNTA_H2.id}_nota`]}
+        onChange={e=>setForm({...form,[`${PREGUNTA_H2.id}_nota`]:e.target.value})}
+        rows={2} style={{...inp,resize:"none",lineHeight:1.5,fontSize:13}}/>
+    </div>
+  );
+}
+
 const flecha = (activo) => ({
   width:40,height:40,borderRadius:8,border:`1px solid ${C.border}`,background:activo?C.surface:C.surfaceAlt,
   color:activo?C.navy:C.textMuted,fontSize:16,cursor:activo?"pointer":"default",fontFamily:"inherit",flexShrink:0,
 });
 
 export default function Noche({form, setForm, today, registros, manana, onGuardar, savedNoche}){
-  const completo = form.p1!==null&&form.p2!==null&&form.p3!==null&&form.p4!==null;
+  // Con fin definido, "¿Viviste tu fin?" reemplaza a Alineación (p4 se deriva al guardar).
+  const conFin = finDefinido(manana);
+  const completo = form.p1!==null&&form.p2!==null&&form.p3!==null&&(conFin ? form.finCumplido!==null : form.p4!==null);
   const esHoy = form.fecha===today;
   const bloqueada = !nocheDisponible(form.fecha) && !registros[form.fecha];
   const irA = f => setForm({...form, fecha:f});
@@ -79,15 +110,18 @@ export default function Noche({form, setForm, today, registros, manana, onGuarda
       ))}
 
       <div style={{fontSize:11,letterSpacing:2,color:C.textMuted,textTransform:"uppercase",marginBottom:10,marginTop:6}}>Hábito 2 — Empiece con un fin en mente</div>
+      {conFin ? <FinDelDia manana={manana} form={form} setForm={setForm}/> : (
       <div style={{...card,borderLeft:`4px solid ${C.celeste}`}}>
+        <div style={{fontSize:12,color:C.gold,fontWeight:600,marginBottom:10}}>🎯 {esHoy?"No definiste tu fin hoy.":"No definiste tu fin ese día."}</div>
         <div style={{fontSize:11,letterSpacing:2,color:C.celeste,textTransform:"uppercase",marginBottom:6}}>{PREGUNTA_H2.label}</div>
         <div style={{fontSize:15,color:C.textPrimary,marginBottom:6,lineHeight:1.5,fontWeight:500}}>{PREGUNTA_H2.pregunta}</div>
         <div style={{fontSize:12,color:C.textMuted,marginBottom:14,fontStyle:"italic"}}>{PREGUNTA_H2.ayuda}</div>
         <SiNo valor={form[PREGUNTA_H2.id]} onChange={val=>setForm({...form,[PREGUNTA_H2.id]:val})}/>
-        <textarea placeholder="¿Qué rol quedó más alineado hoy? ¿Cuál quedó en deuda?" value={form[`${PREGUNTA_H2.id}_nota`]}
+        <textarea placeholder={NOTA_H2} value={form[`${PREGUNTA_H2.id}_nota`]}
           onChange={e=>setForm({...form,[`${PREGUNTA_H2.id}_nota`]:e.target.value})}
           rows={2} style={{...inp,resize:"none",lineHeight:1.5,fontSize:13}}/>
       </div>
+      )}
 
       <div style={{fontSize:11,letterSpacing:2,color:C.textMuted,textTransform:"uppercase",marginBottom:10,marginTop:6}}>Cierre del día · opcional</div>
       <div style={card}>
@@ -101,8 +135,8 @@ export default function Noche({form, setForm, today, registros, manana, onGuarda
       </div>
       <Cumplimiento titulo="¿Cumplí el compromiso de la mañana?" texto={manana?.compromiso}
         vacio="No cargaste un compromiso esa mañana." valor={form.compromisoCumplido} onChange={v=>setForm({...form,compromisoCumplido:v})}/>
-      <Cumplimiento titulo="¿Hice la tarea más importante del día?" texto={manana?.tareaClave?.texto}
-        vacio="No elegiste una tarea clave esa mañana." valor={form.tareaClaveHecha} onChange={v=>setForm({...form,tareaClaveHecha:v})}/>
+      {!conFin && <Cumplimiento titulo="¿Hice la tarea más importante del día?" texto={manana?.tareaClave?.texto}
+        vacio="No elegiste una tarea clave esa mañana." valor={form.tareaClaveHecha} onChange={v=>setForm({...form,tareaClaveHecha:v})}/>}
 
       <button onClick={onGuardar} disabled={!completo}
         style={{width:"100%",padding:14,borderRadius:10,border:"none",background:completo?C.navy:C.surfaceAlt,color:completo?C.white:C.textMuted,fontSize:15,fontFamily:"inherit",fontWeight:600,cursor:"pointer",transition:"all 0.2s"}}>

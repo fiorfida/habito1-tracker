@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { C, card, inp, btnPrimario } from "../theme";
 import { SLabel, MetasRolLista } from "../components/ui";
-import { MISION, VISION_ALT, ROLES } from "../content/contenido";
+import { MISION, VISION_ALT, ROLES, PRINCIPIOS, nombreRol } from "../content/contenido";
+import { finDefinido, partesFin, fraseFin } from "../lib/fin";
 import { formatDate } from "../lib/fechas";
 import { itemsActivos, hs } from "../lib/semanal";
 
@@ -62,7 +63,7 @@ export default function Manana({today, doc, plan, mananaLog, frase, onGuardar, e
   const candidatas = [...vigentes.map(i=>({id:i.id, texto:i.titulo})), ...m.agregados.map((t,k)=>({id:`a${k}`, texto:t}))];
   const clavePlan = plan?.tareaClave?.[today];
   const tarea = m.tareaClave || (clavePlan && candidatas.find(c=>c.id===clavePlan)) || null;
-  const faltan = [!tarea?.texto && "tarea más importante", !m.compromiso.trim() && "compromiso del día"].filter(Boolean);
+  const faltan = [!finDefinido(m) && "fin para hoy", !m.compromiso.trim() && "compromiso del día"].filter(Boolean);
 
   const ajustes = Object.values(mananaLog||{}).filter(x=>x.misionAjuste||x.visionAjuste).sort((a,b)=>b.fecha.localeCompare(a.fecha));
 
@@ -71,7 +72,7 @@ export default function Manana({today, doc, plan, mananaLog, frase, onGuardar, e
       <div style={{...card, background:completada?C.yesBg:C.warnBg, border:`1px solid ${completada?C.yes:C.warn}`, marginBottom:16}}>
         <div style={{fontSize:13,fontWeight:600,color:completada?C.yes:C.warn}}>{completada?"✓ Mañana completada":"☀️ Mañana pendiente"}</div>
         <div style={{fontSize:12,color:C.textMuted,marginTop:2}}>
-          {completada ? <>Tarea clave: {tarea?.texto||"—"} · Compromiso: {m.compromiso||"—"}</> : "5 a 10 minutos: reconectar con lo decidido en la semana y ajustar el día."}
+          {completada ? <>{finDefinido(m) ? `🎯 ${fraseFin(m)}` : `Tarea clave: ${tarea?.texto||"—"}`} · Compromiso: {m.compromiso||"—"}</> : "5 a 10 minutos: reconectar con lo decidido en la semana y ajustar el día."}
         </div>
       </div>
 
@@ -144,7 +145,7 @@ export default function Manana({today, doc, plan, mananaLog, frase, onGuardar, e
       )}
       {paso===2 && <MisRoles/>}
 
-      {paso===3 && <Adaptacion today={today} plan={plan} m={m} set={set} delPlan={delPlan} candidatas={candidatas} tarea={tarea}/>}
+      {paso===3 && <Adaptacion today={today} plan={plan} m={m} set={set} delPlan={delPlan} candidatas={candidatas} onGuardarFin={c=>guardar(c,false)}/>}
 
       {paso===4 && (
         <>
@@ -186,15 +187,9 @@ export default function Manana({today, doc, plan, mananaLog, frase, onGuardar, e
   );
 }
 
-function Adaptacion({today, plan, m, set, delPlan, candidatas, tarea}){
+function Adaptacion({today, plan, m, set, delPlan, candidatas, onGuardarFin}){
   const [nuevo, setNuevo] = useState("");
-  const [libre, setLibre] = useState("");
-  const [marcadas, setMarcadas] = useState([]);
-  const [duelo, setDuelo] = useState(null); // {campeon, cola}
   const agregar = () => { if(!nuevo.trim()) return; set({agregados:[...m.agregados, nuevo.trim()]}); setNuevo(""); };
-  const elegir = (c) => { set({tareaClave:{id:c.id, texto:c.texto}}); setDuelo(null); setMarcadas([]); };
-  const empezarDuelo = () => { const l = candidatas.filter(c=>marcadas.includes(c.id)); setDuelo({campeon:l[0], cola:l.slice(1)}); };
-  const gana = (c) => { const cola = duelo.cola.slice(1); if (!cola.length) elegir(c); else setDuelo({campeon:c, cola}); };
 
   return (
     <>
@@ -246,10 +241,71 @@ function Adaptacion({today, plan, m, set, delPlan, candidatas, tarea}){
         <textarea value={m.distinto} onChange={e=>set({distinto:e.target.value})} placeholder="Opcional" rows={2} style={{...inp,resize:"vertical",fontSize:13}}/>
       </div>
 
+      <FinDelDia m={m} candidatas={candidatas} onGuardar={onGuardarFin}/>
+    </>
+  );
+}
+
+// ─── 🎯 Mi fin para hoy (Hábito 2) ─────────────────────────────────────
+// Tarea → rol → principio. Se guarda solo con los tres.
+const chip = (activo) => ({
+  padding:"9px 12px",borderRadius:20,border:`2px solid ${activo?C.navy:C.border}`,cursor:"pointer",fontFamily:"inherit",
+  fontSize:13,fontWeight:600,lineHeight:1.3,textAlign:"left",background:activo?C.navy:C.surfaceAlt,color:activo?C.white:C.textSecond,
+});
+const pasoFin = { fontSize:12,fontWeight:700,color:C.gold,letterSpacing:1,textTransform:"uppercase",marginBottom:4 };
+const ayudaFin = { fontSize:12,color:C.textMuted,fontStyle:"italic",marginBottom:10 };
+
+function Frase({rol, principio, tarea}){
+  const v = (x) => x ? <strong style={{color:C.navy}}>{x}</strong> : <span style={{color:C.textMuted}}>…</span>;
+  return <>Hoy priorizo {v(rol)}, guiado por {v(principio)}: {v(tarea)}.</>;
+}
+
+function FinDelDia({m, candidatas, onGuardar}){
+  const guardado = finDefinido(m);
+  const desdeDoc = () => ({ rol:m.fin?.rol||null, principio:m.fin?.principio||null, tarea:m.fin?(m.tareaClave||null):null });
+  const [editando, setEditando] = useState(!guardado);
+  const [b, setB] = useState(desdeDoc);
+  const [guardando, setGuardando] = useState(false);
+  const [libre, setLibre] = useState("");
+  const [marcadas, setMarcadas] = useState([]);
+  const [duelo, setDuelo] = useState(null); // {campeon, cola}
+  const elegir = (c) => { setB(x=>({...x, tarea:{id:c.id, texto:c.texto}})); setDuelo(null); setMarcadas([]); };
+  const empezarDuelo = () => { const l = candidatas.filter(c=>marcadas.includes(c.id)); setDuelo({campeon:l[0], cola:l.slice(1)}); };
+  const gana = (c) => { const cola = duelo.cola.slice(1); if (!cola.length) elegir(c); else setDuelo({campeon:c, cola}); };
+
+  const roles = ROLES.some(r=>r.num===b.rol) || !b.rol ? ROLES : [...ROLES, {num:b.rol, nombre:nombreRol(b.rol)}];
+  const faltan = [!b.tarea?.texto && "tarea", !b.rol && "rol", !b.principio && "principio"].filter(Boolean);
+  const guardar = async () => {
+    if (faltan.length) return;
+    setGuardando(true);
+    // Aunque la nube falle, queda guardado en el dispositivo y en la cola de pendientes (la app avisa).
+    await onGuardar({fin:{rol:b.rol, principio:b.principio}, tareaClave:b.tarea});
+    setGuardando(false);
+    setEditando(false);
+  };
+
+  if (!editando) {
+    const p = partesFin(m);
+    return (
       <div style={{...card,borderLeft:`4px solid ${C.gold}`}}>
-        <SLabel>★ Tarea más importante del día</SLabel>
-        <div style={{fontSize:13,color:C.textSecond,marginBottom:12}}>En función de mi misión, visión y objetivos, ¿cuál es la tarea más importante que tengo hoy?</div>
-        {tarea?.texto && <div style={{fontSize:15,fontWeight:600,color:C.navy,background:C.goldBg,borderRadius:8,padding:"10px 12px",marginBottom:12}}>★ {tarea.texto}</div>}
+        <SLabel>🎯 Mi fin para hoy</SLabel>
+        <div style={{fontSize:15,lineHeight:1.6,color:C.textPrimary,background:C.goldBg,borderRadius:8,padding:"12px 14px",marginBottom:10}}>
+          <Frase rol={p.rol} principio={p.principio} tarea={p.tarea}/>
+        </div>
+        <button onClick={()=>{ setB(desdeDoc()); setEditando(true); }} style={btnLink}>Editar</button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{...card,borderLeft:`4px solid ${C.gold}`}}>
+      <SLabel>🎯 Mi fin para hoy</SLabel>
+      <div style={{fontSize:13,color:C.textSecond,marginBottom:16}}>Empezá con un fin en mente: primero la tarea más importante; después, a qué rol pertenece y qué principio te guía.</div>
+
+      <div style={pasoFin}>1 · Tarea más importante</div>
+      <div style={{fontSize:14,fontWeight:500,color:C.textPrimary,lineHeight:1.5,marginBottom:4}}>¿Cuál es la tarea más importante que tengo hoy?</div>
+      <div style={ayudaFin}>Una conducta concreta: a la noche tenés que poder decir si la hiciste.</div>
+        {b.tarea?.texto && <div style={{fontSize:15,fontWeight:600,color:C.navy,background:C.goldBg,borderRadius:8,padding:"10px 12px",marginBottom:12}}>★ {b.tarea.texto}</div>}
         {duelo ? (
           <div>
             <div style={{fontSize:12,color:C.textMuted,marginBottom:8}}>¿Cuál es más importante hoy?</div>
@@ -273,12 +329,38 @@ function Adaptacion({today, plan, m, set, delPlan, candidatas, tarea}){
             {marcadas.length>=2 && <button onClick={empezarDuelo} style={{...btnLink,marginTop:10}}>Dudo entre {marcadas.length}: comparar de a pares</button>}
             <div style={{display:"flex",gap:8,marginTop:12}}>
               <input value={libre} onChange={e=>setLibre(e.target.value)} placeholder="O escribila" style={{...inp,fontSize:13}}/>
-              <button onClick={()=>{ if(libre.trim()){ set({tareaClave:{id:null, texto:libre.trim()}}); setLibre(""); } }} style={{...btnPrimario,width:"auto",padding:"10px 16px",fontSize:13}}>Usar</button>
+              <button onClick={()=>{ if(libre.trim()){ setB(x=>({...x, tarea:{id:null, texto:libre.trim()}})); setLibre(""); } }} style={{...btnPrimario,width:"auto",padding:"10px 16px",fontSize:13}}>Usar</button>
             </div>
           </>
         )}
+
+      <div style={{...pasoFin,marginTop:20}}>2 · Rol prioritario</div>
+      <div style={ayudaFin}>El rol al que pertenece esa tarea y que hoy más necesita tu presencia (no el que más horas te ocupa). Si no coinciden, revisá la tarea.</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:18}}>
+        {roles.map(r=><button key={r.num} onClick={()=>setB(x=>({...x, rol:r.num}))} style={chip(b.rol===r.num)}>{r.nombre}</button>)}
       </div>
-    </>
+
+      <div style={pasoFin}>3 · Principio guía</div>
+      <div style={ayudaFin}>Uno solo, sacado de tu misión: cómo vas a vivir esa tarea.</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+        {PRINCIPIOS.map(pr=><button key={pr} onClick={()=>setB(x=>({...x, principio:pr}))} style={chip(b.principio===pr)}>{pr}</button>)}
+      </div>
+
+      <div style={{marginTop:18,paddingTop:14,borderTop:`1px dashed ${C.border}`}}>
+        <div style={{fontSize:11,letterSpacing:2,color:C.textMuted,textTransform:"uppercase",marginBottom:6}}>Vista previa</div>
+        <div style={{fontSize:15,lineHeight:1.6,color:C.textPrimary,background:C.goldBg,borderRadius:8,padding:"12px 14px"}}>
+          <Frase rol={b.rol&&nombreRol(b.rol)} principio={b.principio} tarea={b.tarea?.texto}/>
+        </div>
+        {faltan.length>0 && <div style={{fontSize:12,color:C.warn,marginTop:8}}>Para guardar falta elegir: {faltan.join(", ").replace(/, ([^,]*)$/," y $1")}.</div>}
+        <div style={{display:"flex",gap:8,marginTop:12}}>
+          {guardado && <button onClick={()=>setEditando(false)} style={{...btnPrimario,flex:1,background:C.surfaceAlt,color:C.textSecond,fontSize:14}}>Cancelar</button>}
+          <button onClick={guardar} disabled={faltan.length>0||guardando}
+            style={{...btnPrimario,flex:2,fontSize:14,background:faltan.length?C.surfaceAlt:C.gold,color:faltan.length?C.textMuted:C.white,cursor:faltan.length?"default":"pointer"}}>
+            {guardando?"Guardando…":"🎯 Guardar mi fin"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

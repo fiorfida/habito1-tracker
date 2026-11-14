@@ -1,6 +1,7 @@
 import { C, card, dotColor } from "../theme";
 import { PREGUNTAS_H1, PREGUNTA_H2 } from "../content/contenido";
 import { formatDate, dayOfWeek, NOCHE_DESDE } from "../lib/fechas";
+import { finDefinido, fraseFin } from "../lib/fin";
 
 // Un día: Noche (4 preguntas) y Mañana (tarea clave, compromiso, anticipación) con sus resultados.
 export default function DiaCard({d, r, m, today, nocheDisp}){
@@ -52,11 +53,15 @@ export default function DiaCard({d, r, m, today, nocheDisp}){
 }
 // Fase 3: compromiso y tarea clave de la mañana con su resultado de la noche, y conflicto.
 const RESULTADO = { si:{t:"Sí",c:C.yes}, parcial:{t:"Parcial",c:C.warn}, no:{t:"No",c:C.no} };
+const RESULTADO_FIN = { ...RESULTADO, parcial:{t:"A medias",c:C.warn} };
 function DiaExtra({m, r}){
   const situaciones = (m?.situaciones||[]).filter(s=>s.situacion);
   const filas = [
     m?.misionOk!=null && {k:"Mañana · misión y visión", v:`Misión: ${m.misionOk?"Sí":"No"}${m.misionAjuste?` (${m.misionAjuste})`:""} · Visión: ${m.visionOk==null?"—":m.visionOk?"Sí":"No"}${m.visionAjuste?` (${m.visionAjuste})`:""}`},
-    m?.tareaClave?.texto && {k:"★ Tarea clave", v:m.tareaClave.texto, res:r?.tareaClaveHecha},
+    // Días con "Mi fin para hoy": la frase y si lo viví. Días viejos: solo la tarea clave, como antes.
+    finDefinido(m) && {k:"🎯 Mi fin para hoy", v:fraseFin(m), res:r?.fin?.cumplido, tabla:RESULTADO_FIN, etiqueta:"¿Lo viví?"},
+    // Con fin, la tarea ya está en la frase y su resultado es el mismo ("¿Lo viví?").
+    !finDefinido(m) && m?.tareaClave?.texto && {k:"★ Tarea clave", v:m.tareaClave.texto, res:r?.tareaClaveHecha},
     m?.compromiso && {k:"Compromiso", v:m.compromiso, res:r?.compromisoCumplido},
     situaciones.length>0 && {k:"Anticipación", v:situaciones.map(s=>`${s.situacion} → ${s.respuesta||"…"}`).join(" · ")},
     r?.conflicto && r.conflicto_nota && {k:"Conflicto · qué pude hacer diferente", v:r.conflicto_nota},
@@ -70,7 +75,7 @@ function DiaExtra({m, r}){
             <div style={{fontSize:11,color:C.textMuted,marginBottom:1}}>{f.k}</div>
             <div style={{fontSize:13,color:C.textSecond}}>{f.v}</div>
           </div>
-          {f.res && <span style={{fontSize:11,fontWeight:700,color:RESULTADO[f.res].c,flexShrink:0}}>{RESULTADO[f.res].t}</span>}
+          {f.res && <span style={{fontSize:11,fontWeight:700,color:(f.tabla||RESULTADO)[f.res].c,flexShrink:0}}>{f.etiqueta?`${f.etiqueta} `:""}{(f.tabla||RESULTADO)[f.res].t}</span>}
         </div>
       ))}
     </div>
