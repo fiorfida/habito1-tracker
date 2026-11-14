@@ -118,7 +118,7 @@ export const MATRIZ_CRITERIOS = [
 ];
 
 export const PREGUNTAS_H1 = [
-  { id:"p1", label:"H1 — Energía",   pregunta:"¿Puse mi energía en lo que puedo controlar?",         ayuda:"SÍ = me enfoqué en mi Círculo de Influencia. NO = gasté energía en preocupaciones fuera de mi control." },
+  { id:"p1", label:"H1 — Foco", pregunta:"¿Puse mi energía en lo que puedo controlar?",         ayuda:"SÍ = me enfoqué en mi Círculo de Influencia. NO = gasté energía en preocupaciones fuera de mi control." },
   { id:"p2", label:"H1 — Lenguaje",  pregunta:"¿Usé lenguaje proactivo durante el día?",             ayuda:"SÍ = evité 'tengo que', 'no puedo', 'me hizo'. NO = caí en lenguaje reactivo." },
   { id:"p3", label:"H1 — Respuesta", pregunta:"¿Respondí desde mis valores en lugar de reaccionar?", ayuda:"SÍ = actué desde mis valores ante situaciones difíciles. NO = reaccioné automáticamente." },
 ];

@@ -58,3 +58,60 @@
   }
   .historial-grid > * { margin-bottom: 0 !important; }
 }
+
+/* ─── Proactividad ─────────────────────────────────────────────────────── */
+.proa-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.proa-kpi-dist { grid-column: span 2; }
+@media (min-width: 768px) {
+  .proa-kpis { grid-template-columns: repeat(4, 1fr); }
+  .proa-kpi-dist { grid-column: span 2; grid-row: span 1; }
+}
+@media (min-width: 1024px) {
+  .proa-kpis { grid-template-columns: repeat(6, 1fr); }
+}
+
+.proa-senales {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+@media (min-width: 560px) {
+  .proa-senales { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Detalle del día: hoja inferior en el celular, panel lateral desde tablet */
+.proa-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 31, 91, 0.45);
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.proa-modal {
+  background: #ffffff;
+  width: 100%;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 18px 16px 20px;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 31, 91, 0.2);
+}
+@media (min-width: 768px) {
+  .proa-overlay { justify-content: flex-end; align-items: stretch; }
+  .proa-modal {
+    width: 420px;
+    max-height: none;
+    height: 100%;
+    border-radius: 0;
+    padding: 22px 20px;
+    box-shadow: -4px 0 20px rgba(0, 31, 91, 0.2);
+  }
+}

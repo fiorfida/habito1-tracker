@@ -2,6 +2,7 @@
 // Cada hábito define cómo se cuenta un día cumplido a partir de lo que ya
 // se registra. Para sumar un hábito: agregarlo acá con su regla.
 import { dateRange } from "./fechas";
+import { clasificarDia } from "./proactividad";
 
 export const HABITOS_SEGUIDOS = [
   {
@@ -13,8 +14,9 @@ export const HABITOS_SEGUIDOS = [
   {
     id: "proactivo",
     nombre: "Ser proactivo",
-    regla: "Se cumple el día que respondo Sí a Energía, Lenguaje y Respuesta.",
-    cumple: (d, { registros }) => { const r = registros[d]; return !!r && !!r.p1 && !!r.p2 && !!r.p3; },
+    regla: "Se cumple el día que respondo Sí a Foco, Lenguaje y Respuesta y cumplo el compromiso de la mañana.",
+    // Misma regla que el día "bueno" de la vista Proactividad.
+    cumple: (d, { registros }) => clasificarDia(registros[d]) === "bueno",
   },
 ];
 
