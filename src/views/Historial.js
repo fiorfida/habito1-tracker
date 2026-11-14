@@ -8,11 +8,30 @@ import { ResumenTrimestral, ResumenAnual } from "../components/RevisionesResumen
 import { addDays } from "../lib/fechas";
 import { trimestreSiguiente } from "../lib/periodos";
 import { TIPOS, entradasRango } from "../lib/linea";
+import Proactividad from "./Proactividad";
 
 const VENTANA_DIAS = 30; // cuánto muestra de entrada; "Ver más" suma otro tanto
 
-// Historial: una sola línea de tiempo (días y revisiones), más reciente primero.
+// Historial: subvistas "Línea de tiempo" y "Proactividad" (Hábito 1).
 export default function Historial(props){
+  const [sub, setSub] = useState("linea");
+  const opciones = [{id:"linea",t:"Línea de tiempo"},{id:"proactividad",t:"Proactividad"}];
+  return (
+    <div>
+      <div role="tablist" style={{display:"flex",background:C.surfaceAlt,borderRadius:10,padding:3,marginBottom:16}}>
+        {opciones.map(o=>(
+          <button key={o.id} role="tab" aria-selected={sub===o.id} onClick={()=>setSub(o.id)} style={{flex:1,padding:"8px 0",borderRadius:8,border:"none",
+            background:sub===o.id?C.surface:"transparent",color:sub===o.id?C.navy:C.textSecond,fontSize:13,fontWeight:sub===o.id?700:500,cursor:"pointer",fontFamily:"inherit",
+            boxShadow:sub===o.id?"0 1px 3px rgba(0,31,91,0.12)":"none"}}>{o.t}</button>
+        ))}
+      </div>
+      {sub==="linea" ? <LineaDeTiempo {...props}/> : <Proactividad registros={props.registros} mananaLog={props.mananaLog} today={props.today}/>}
+    </div>
+  );
+}
+
+// Una sola línea de tiempo (días y revisiones), más reciente primero.
+function LineaDeTiempo(props){
   const { stats, registros, mananaLog, semanaLog, planLog, planTrim, mensualLog, trimestreLog, anualLog, today, nocheDisp } = props;
   const { allDays, tracked, totalNoche, totalManana, mananasHechas, consistency } = stats;
   const [tipo, setTipo] = useState("todo");
