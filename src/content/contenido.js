@@ -26,9 +26,9 @@ export const ROLES_BASE = [
   { num:"3", nombre:"Facundito",            desc:"Compañero, presente, que elige a Flo todos los días." },
   { num:"4", nombre:"Iorfida",              desc:"Hijo, nieto, tío de Josefina. Familia extensa unida." },
   { num:"5", nombre:"Iorfi/a",              desc:"Amigo presente que cultiva los vínculos con EPG, EC, Vi y Lu." },
-  { num:"6", nombre:"PLSC Specialist — Tecpetrol", desc:"Planning & Process SUCH · 2 reportes directos (Mati Y, Tincho P) · Mayor influencia; balance entre tareas de manager y de analista." },
+  { num:"6", nombre:"PLSC Specialist Tecpetrol", desc:"Planning & Process SUCH · 2 reportes directos (Mati Y, Tincho P) · Mayor influencia; balance entre tareas de manager y de analista." },
   { num:"7", nombre:"Emprendedor",          desc:"Freelance (IJ, Yungo, Lubich) + proyecto inmobiliario Riglos." },
-  { num:"8", nombre:"Referente CCBP",       desc:"Comunidad, organización, presencia deportiva y comisión." },
+  { num:"8", nombre:"Referente fútbol CCBP",desc:"Comunidad, organización, presencia deportiva y comisión." },
 ];
 
 // Citas con fuente primaria verificada (ver Fase 1). Se muestran frase + autor.
@@ -115,6 +115,17 @@ export const MATRIZ_CRITERIOS = [
   "¿Agrega valor real a otros?",
   "¿Me hace crecer como persona?",
   "¿Me permite vivir con disfrute?",
+];
+
+// Principios guía para "Mi fin para hoy" (Hábito 2), sacados de la misión. Editá la lista acá.
+export const PRINCIPIOS = [
+  "Libertad",
+  "Honestidad",
+  "Transparencia",
+  "Vivir para el otro",
+  "Hacerme cargo de lo que depende de mí",
+  "Pasión y disfrutar el proceso",
+  "Presencia plena",
 ];
 
 export const PREGUNTAS_H1 = [

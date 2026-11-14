@@ -3,6 +3,7 @@
 // "trimestre:AAAA-QN", "anual:AAAA". Cada una se arma entera desde los datos.
 // Todo registro va de más reciente a más viejo; las agendas, en orden calendario.
 import { PREGUNTAS_H1, PREGUNTA_H2, ROLES, nombreRol } from "../content/contenido";
+import { finDefinido, fraseFin, textoCumplido } from "./fin";
 import { formatDate, dayOfWeek, addDays, dateRange } from "./fechas";
 import { rangoMes, nombreMes, partesTrimestre, nombreTrimestre, trimestreSiguiente, semanasDelTrimestre, MESES } from "./periodos";
 import { HABITOS_SEGUIDOS } from "./habitos";
@@ -92,7 +93,7 @@ function docDia(f, d) {
       (m.visionAlternativas || []).filter(a => a.texto).length > 0 && `Alternativas de visión: ${m.visionAlternativas.filter(a => a.texto).map((a, k) => `${a.texto}${m.visionElegida === k ? " (elegida)" : ""}`).join(" · ")}`,
       m.cambio && `Cambios al plan: ${[...(m.agregados || []).map(a => `+ ${a}`), m.quitados?.length ? `${m.quitados.length} bloque(s) quitado(s)` : ""].filter(Boolean).join(" · ") || "sí"}`,
       m.distinto && `Qué hacer distinto hoy: ${m.distinto}`,
-      m.tareaClave?.texto && `Tarea más importante: ${m.tareaClave.texto}`,
+      finDefinido(m) ? `Mi fin para hoy: ${fraseFin(m)}` : m.tareaClave?.texto && `Tarea más importante: ${m.tareaClave.texto}`,
       m.compromiso && `Compromiso: ${m.compromiso}`,
       ...(m.situaciones || []).filter(s => s.situacion).map(s => `Anticipación: ${s.situacion} → ${s.respuesta || "…"}`),
       m.v !== 2 && "Mañana leída (formato anterior)",
@@ -103,6 +104,7 @@ function docDia(f, d) {
     html += h3("NOCHE") + lista([
       ...[...PREGUNTAS_H1, PREGUNTA_H2].map(q => `${q.label.replace(/^H\d — /, "")}: ${sn(r[q.id])}${r[`${q.id}_nota`] ? ` — ${r[`${q.id}_nota`]}` : ""}`),
       r.conflicto != null && `Conflicto: ${sn(r.conflicto)}${r.conflicto_nota ? ` — Qué pude hacer diferente: ${r.conflicto_nota}` : ""}`,
+      r.fin?.cumplido && `¿Viví mi fin de hoy?: ${textoCumplido(r.fin.cumplido)}`,
       (r.compromisoCumplido || r.tareaClaveHecha) && `Compromiso cumplido: ${res(r.compromisoCumplido)} · Tarea clave hecha: ${res(r.tareaClaveHecha)}`,
       `Hábitos: ${HABITOS_SEGUIDOS.map(h => `${h.nombre} ${h.cumple(f, d) ? "✓" : "✗"}`).join(" · ")}`,
     ]);

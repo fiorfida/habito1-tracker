@@ -11,6 +11,7 @@ import { rangoMes, nombreMes, mesSiguiente, mesAnterior, trimestreDe, partesTrim
 import { estadisticasRango } from "../lib/estadisticas";
 import { tiempoPorRol, hs } from "../lib/semanal";
 import { entradasRango } from "../lib/linea";
+import { rolesPriorizados } from "../lib/fin";
 
 const PERIODOS = [
   { id:"dia", t:"Día" }, { id:"semana", t:"Semana" }, { id:"mes", t:"Mes" }, { id:"trimestre", t:"Trimestre" }, { id:"anio", t:"Año" },
@@ -130,6 +131,8 @@ export default function Resumen(props){
           </div>
         </div>
 
+        <RolesPriorizados mananaLog={mananaLog} registros={registros} today={today}/>
+
         {(tipo==="semana"||tipo==="mes") && dias.length>0 && (
           <div style={card}>
             <SLabel>Días · más reciente primero</SLabel>
@@ -157,6 +160,29 @@ export default function Resumen(props){
             ))}
           </div>
         )}
+      </>)}
+    </div>
+  );
+}
+
+// 🎯 Roles priorizados en "Mi fin para hoy": siempre los últimos 30 días, sin importar el período elegido.
+// Sirve para ver si siempre gana el mismo rol y en cuál cuesta más vivir el fin.
+function RolesPriorizados({mananaLog, registros, today}){
+  const { total, filas } = rolesPriorizados(mananaLog, registros, today, 30);
+  return (
+    <div style={{...card,borderLeft:`4px solid ${C.gold}`}}>
+      <SLabel>🎯 Roles priorizados (últimos 30 días)</SLabel>
+      {total===0 ? <div style={{fontSize:12,color:C.textMuted,fontStyle:"italic"}}>Todavía no definiste ningún fin en los últimos 30 días.</div> : (<>
+        {filas.map(f=>{ const pct=Math.round(f.dias/total*100); return (
+          <div key={f.num} style={{marginBottom:8}}>
+            <div style={{display:"flex",justifyContent:"space-between",gap:8,fontSize:12,color:C.textSecond,marginBottom:2}}>
+              <span>{f.nombre}</span>
+              <span style={{flexShrink:0}}><strong style={{color:C.navy}}>{f.dias} {f.dias===1?"día":"días"}</strong> · <span style={{color:scoreColor(f.pctSi)}}>{f.pctSi}% vivido</span></span>
+            </div>
+            <div style={{height:6,background:C.surfaceAlt,borderRadius:3}}><div style={{height:"100%",width:pct+"%",background:C.gold,borderRadius:3}}/></div>
+          </div>
+        ); })}
+        <div style={{fontSize:11,color:C.textMuted,marginTop:6}}>{total} {total===1?"día":"días"} con fin definido · "% vivido" = días con "¿Viviste tu fin?" en Sí.</div>
       </>)}
     </div>
   );
