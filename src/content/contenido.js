@@ -128,6 +128,53 @@ export const PRINCIPIOS = [
   "Presencia plena",
 ];
 
+// ─── Hábito 2: pedidos del día y las 3 salidas ─────────────────────────
+// Las claves (`v`) son las que se guardan en Firestore: no cambiarlas. Los textos sí se pueden editar.
+export const SALIDAS = [
+  { v:"si_elegido", t:"✅ Sí elegido",  icono:"✅", nombre:"Sí elegido", ayuda:"Digo que sí porque lo elijo, no por reflejo." },
+  { v:"si_pero",    t:"🔄 Sí, pero…",   icono:"🔄", nombre:"Sí, pero…",  ayuda:"Cambio el cuándo, el cómo o quién." },
+  { v:"no_amable",  t:"🙅 No amable",   icono:"🙅", nombre:"No amable",  ayuda:"Digo que no, con respeto." },
+];
+
+// Mañana · card "🗣️ Mi afirmación" (entre "🎯 Mi fin para hoy" y "🎬 Ensayo mental").
+export const AFIRMACION = "Me da una profunda tranquilidad elegir yo cada respuesta, hoy: escucho el pedido completo, me tomo un segundo y respondo con un sí elegido, un sí con condiciones o un no amable.";
+
+// Mañana · card "🎬 Ensayo mental" (va después de "🗣️ Mi afirmación").
+export const ENSAYO = {
+  titulo: "🎬 Ensayo mental",
+  ensayaTitulo: "Ensayá (2 min)",
+  ensaya: "Anticipá el pedido más probable de hoy. Imaginá la escena con detalle (dónde estás, quién te habla, qué te pide), sentí el impulso del 'sí' automático y **verte respondiendo distinto**. Visualizá la respuesta que querés, no la tensión.",
+  describir: "Opcional: describí la escena que ensayaste para que quede registrada.",
+  describirPlaceholder: "Dónde estoy, quién me habla, qué me pide y cómo respondo…",
+  reflejoTitulo: "Tu reflejo nuevo",
+  reflejo: "Dame un rato y te confirmo.",
+  momentoTitulo: "En el momento",
+  momento: ["Escucho", "Pauso", "Elijo"],
+  salidasTitulo: "Las 3 salidas",
+  tuFin: "Tu fin de hoy:",
+  sinFin: "Definí primero tu fin de hoy ↑",
+};
+
+// Noche · registro de pedidos (sección Hábito 2).
+export const PEDIDOS_NOCHE = {
+  pregunta: "¿Qué pedido me llegó hoy y qué salida elegí?",
+  ayuda: "Un pedido por línea, en pocas palabras, y la salida que elegiste.",
+  placeholder: "Ej.: Mati me pidió revisar su informe hoy",
+  agregar: "+ Agregar otro pedido",
+  sinPedidos: "Hoy no hubo pedidos relevantes",
+  faltaSalida: "Elegí la salida de este pedido.",
+  maximo: 5,
+};
+
+// Revisión semanal · bloque "🔀 Mis salidas de la semana".
+export const SALIDAS_SEMANA = {
+  titulo: "🔀 Mis salidas de la semana",
+  reflejoDisfrazado: "Casi todo fue 'Sí elegido'. ¿Fue elección real o reflejo disfrazado de elección?",
+  sinRegistros: "Esta semana no registraste pedidos. ¿No hubo, o no los anotaste?",
+  reflexion: "Reflexión de la semana sobre mis salidas",
+  reflexionPlaceholder: "¿Qué patrón ves? ¿Qué salida te cuesta y con quién?",
+};
+
 export const PREGUNTAS_H1 = [
   { id:"p1", label:"H1 — Foco", pregunta:"¿Puse mi energía en lo que puedo controlar?",         ayuda:"SÍ = me enfoqué en mi Círculo de Influencia. NO = gasté energía en preocupaciones fuera de mi control." },
   { id:"p2", label:"H1 — Lenguaje",  pregunta:"¿Usé lenguaje proactivo durante el día?",             ayuda:"SÍ = evité 'tengo que', 'no puedo', 'me hizo'. NO = caí en lenguaje reactivo." },

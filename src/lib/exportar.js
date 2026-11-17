@@ -10,6 +10,7 @@ import { HABITOS_SEGUIDOS } from "./habitos";
 import { estadisticasRango } from "./estadisticas";
 import { datosSemana, itemsActivos, tiempoPorRol, diasDe, hs, esV2, metasPrevistas } from "./semanal";
 import { metasActivas } from "./metas";
+import { pedidosDe, salidaDe, salidasSemana } from "./habito2";
 
 // ─── Qué documentos toca cada guardado ─────────────────────────────────
 const trimestreAnterior = (K) => { const [y, q] = K.split("-Q").map(Number); return q === 1 ? `${y - 1}-Q4` : `${y}-Q${q - 1}`; };
@@ -94,6 +95,7 @@ function docDia(f, d) {
       m.cambio && `Cambios al plan: ${[...(m.agregados || []).map(a => `+ ${a}`), m.quitados?.length ? `${m.quitados.length} bloque(s) quitado(s)` : ""].filter(Boolean).join(" · ") || "sí"}`,
       m.distinto && `Qué hacer distinto hoy: ${m.distinto}`,
       finDefinido(m) ? `Mi fin para hoy: ${fraseFin(m)}` : m.tareaClave?.texto && `Tarea más importante: ${m.tareaClave.texto}`,
+      m.habito2?.ensayo?.trim() && `Ensayo mental: ${m.habito2.ensayo.trim()}`,
       m.compromiso && `Compromiso: ${m.compromiso}`,
       ...(m.situaciones || []).filter(s => s.situacion).map(s => `Anticipación: ${s.situacion} → ${s.respuesta || "…"}`),
       m.v !== 2 && "Mañana leída (formato anterior)",
@@ -105,6 +107,8 @@ function docDia(f, d) {
       ...[...PREGUNTAS_H1, PREGUNTA_H2].map(q => `${q.label.replace(/^H\d — /, "")}: ${sn(r[q.id])}${r[`${q.id}_nota`] ? ` — ${r[`${q.id}_nota`]}` : ""}`),
       r.conflicto != null && `Conflicto: ${sn(r.conflicto)}${r.conflicto_nota ? ` — Qué pude hacer diferente: ${r.conflicto_nota}` : ""}`,
       r.fin?.cumplido && `¿Viví mi fin de hoy?: ${textoCumplido(r.fin.cumplido)}`,
+      ...pedidosDe(r).map(x => `Pedido: ${x.pedido} → ${salidaDe(x.salida).nombre}`),
+      r.habito2?.sinPedidos && "Pedidos: hoy no hubo pedidos relevantes",
       (r.compromisoCumplido || r.tareaClaveHecha) && `Compromiso cumplido: ${res(r.compromisoCumplido)} · Tarea clave hecha: ${res(r.tareaClaveHecha)}`,
       `Hábitos: ${HABITOS_SEGUIDOS.map(h => `${h.nombre} ${h.cumple(f, d) ? "✓" : "✗"}`).join(" · ")}`,
     ]);
@@ -140,6 +144,13 @@ function docSemana(P, d, autor) {
       (rf.preocupaciones || []).length > 0 && `Círculo de influencia: ${rf.preocupaciones.map(x => `${x.texto} (${x.control === true ? "en mi control" : x.control === false ? "no en mi control" : "sin clasificar"})`).join(" · ")}`,
       rf.libre && `Reflexión libre: ${rf.libre}`,
       rf.intencion && `Intención para la semana: ${rf.intencion}`,
+    ]);
+    const sal = salidasSemana(W, d.registros);
+    html += h2("MIS SALIDAS DE LA SEMANA (HÁBITO 2)") + lista([
+      sal.total > 0 && `${sal.filas.map(f => `${f.nombre}: ${f.n} (${f.pct}%)`).join(" · ")} · predominó ${sal.predominantes.map(v => salidaDe(v).nombre).join(", ").replace(/, ([^,]*)$/, " y $1")}`,
+      `Noches con pedidos ${sal.diasConPedidos} · sin pedidos relevantes ${sal.diasSinPedidos} · sin registro de pedidos ${sal.diasSinRegistro}`,
+      ...sal.lista.map(x => `${dayOfWeek(x.fecha)} ${formatDate(x.fecha).slice(0, 5)}: ${x.pedido} → ${salidaDe(x.salida).nombre}`),
+      rev.habito2?.reflexionSalidas && `Reflexión sobre mis salidas: ${rev.habito2.reflexionSalidas}`,
     ]);
   } else if (rev) {
     html += h2(`REVISIÓN DE LA SEMANA ${formatDate(W).slice(0, 5)} AL ${formatDate(addDays(W, 6)).slice(0, 5)} (formato anterior)`) + lista([rev.s1 && `Rol más descuidado: ${rev.s1}`, rev.s2 && `Decisión alineada: ${rev.s2}`, rev.s3 && `Qué hacer diferente: ${rev.s3}`]);
