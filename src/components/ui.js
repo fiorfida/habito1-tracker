@@ -1,9 +1,20 @@
 import { useState, useEffect } from "react";
 import { C, card } from "../theme";
 import { metasActivas } from "../lib/metas";
+import { SALIDAS } from "../content/contenido";
 
 export function SLabel({children}){
   return <div style={{fontSize:11,letterSpacing:2,color:"#8aa3c0",textTransform:"uppercase",marginBottom:14}}>{children}</div>;
+}
+// Hábito 2 · chip de una de las 3 salidas (si_elegido | si_pero | no_amable).
+export const COLOR_SALIDA = {
+  si_elegido:{fg:C.yes, bg:C.yesBg}, si_pero:{fg:C.warn, bg:C.warnBg}, no_amable:{fg:C.celeste, bg:C.celestePale},
+};
+export function SalidaChip({salida, chico}){
+  const s = SALIDAS.find(x=>x.v===salida);
+  if (!s) return null;
+  const col = COLOR_SALIDA[s.v];
+  return <span style={{display:"inline-block",whiteSpace:"nowrap",fontSize:chico?11:12,fontWeight:700,padding:chico?"2px 8px":"4px 10px",borderRadius:20,background:col.bg,color:col.fg}}>{s.t}</span>;
 }
 export function EstadoBanner({estado, tituloPendiente, tituloVencida, tituloCompletada, subtitulo}){
   const colores = {

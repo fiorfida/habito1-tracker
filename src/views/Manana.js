@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { C, card, inp, btnPrimario } from "../theme";
-import { SLabel, MetasRolLista } from "../components/ui";
-import { MISION, VISION_ALT, ROLES, PRINCIPIOS, nombreRol } from "../content/contenido";
+import { SLabel, MetasRolLista, SalidaChip } from "../components/ui";
+import { MISION, VISION_ALT, ROLES, PRINCIPIOS, nombreRol, AFIRMACION, ENSAYO, SALIDAS } from "../content/contenido";
 import { finDefinido, partesFin, fraseFin } from "../lib/fin";
 import { formatDate } from "../lib/fechas";
 import { itemsActivos, hs } from "../lib/semanal";
@@ -242,7 +242,61 @@ function Adaptacion({today, plan, m, set, delPlan, candidatas, onGuardarFin}){
       </div>
 
       <FinDelDia m={m} candidatas={candidatas} onGuardar={onGuardarFin}/>
+      <Afirmacion/>
+      <EnsayoMental m={m} set={set}/>
     </>
+  );
+}
+
+// ─── Hábito 2 · pedidos: afirmación y ensayo mental (solo lectura, no guardan nada) ───
+function Afirmacion(){
+  return (
+    <div style={{...card,background:C.celestePale,border:`1px solid ${C.celeste}`}}>
+      <SLabel>🗣️ Mi afirmación</SLabel>
+      <div style={{fontSize:16,fontWeight:600,color:C.navy,lineHeight:1.6}}>"{AFIRMACION}"</div>
+    </div>
+  );
+}
+
+// "**texto**" del contenido → negrita.
+const conNegritas = (t) => t.split(/\*\*(.+?)\*\*/g).map((x,i)=>i%2 ? <strong key={i} style={{color:C.navy}}>{x}</strong> : x);
+const tituloEnsayo = { fontSize:12,fontWeight:700,color:C.gold,letterSpacing:1,textTransform:"uppercase",marginBottom:6 };
+
+// La descripción opcional de la escena se guarda en manana/{fecha}.habito2.ensayo
+// (con el resto de la mañana, al pasar de paso o al completar).
+function EnsayoMental({m, set}){
+  const conFin = finDefinido(m);
+  return (
+    <details open style={{...card,borderLeft:`4px solid ${C.gold}`}}>
+      <summary style={{fontSize:11,letterSpacing:2,color:"#8aa3c0",textTransform:"uppercase",cursor:"pointer"}}>{ENSAYO.titulo}</summary>
+      <div style={{fontSize:12,color:conFin?C.textSecond:C.warn,marginTop:12,marginBottom:14,lineHeight:1.5}}>
+        {conFin ? <>{ENSAYO.tuFin} <em>{fraseFin(m)}</em></> : ENSAYO.sinFin}
+      </div>
+
+      <div style={tituloEnsayo}>{ENSAYO.ensayaTitulo}</div>
+      <div style={{fontSize:14,color:C.textPrimary,lineHeight:1.6,marginBottom:12}}>{conNegritas(ENSAYO.ensaya)}</div>
+      <div style={{fontSize:12,color:C.textMuted,marginBottom:6}}>{ENSAYO.describir}</div>
+      <textarea value={m.habito2?.ensayo||""} onChange={e=>set({habito2:{...(m.habito2||{}), ensayo:e.target.value}})}
+        placeholder={ENSAYO.describirPlaceholder} rows={3} style={{...inp,resize:"vertical",fontSize:13,lineHeight:1.5,marginBottom:16}}/>
+
+      <div style={tituloEnsayo}>{ENSAYO.reflejoTitulo}</div>
+      <div style={{fontSize:17,fontWeight:700,color:C.navy,background:C.goldBg,borderRadius:8,padding:"12px 14px",marginBottom:16}}>"{ENSAYO.reflejo}"</div>
+
+      <div style={tituloEnsayo}>{ENSAYO.momentoTitulo}</div>
+      <div style={{display:"flex",alignItems:"center",flexWrap:"wrap",gap:6,marginBottom:16}}>
+        {ENSAYO.momento.map((x,i)=>(
+          <span key={x} style={{display:"inline-flex",alignItems:"center",gap:6}}>
+            {i>0 && <span style={{color:C.textMuted,fontWeight:700}}>→</span>}
+            <span style={{fontSize:14,fontWeight:700,color:C.white,background:C.navy,borderRadius:8,padding:"6px 12px"}}>{x}</span>
+          </span>
+        ))}
+      </div>
+
+      <div style={tituloEnsayo}>{ENSAYO.salidasTitulo}</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+        {SALIDAS.map(s=><SalidaChip key={s.v} salida={s.v}/>)}
+      </div>
+    </details>
   );
 }
 

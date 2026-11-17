@@ -1,5 +1,7 @@
 import { C, card, inp, lbl } from "../theme";
-import { PREGUNTAS_H1, PREGUNTA_H2 } from "../content/contenido";
+import { PREGUNTAS_H1, PREGUNTA_H2, SALIDAS, PEDIDOS_NOCHE } from "../content/contenido";
+import { COLOR_SALIDA } from "../components/ui";
+import { entradasSinSalida } from "../lib/habito2";
 import { addDays, dayOfWeek, formatDate, nocheDisponible, NOCHE_DESDE } from "../lib/fechas";
 import { finDefinido, partesFin, FIN_CUMPLIDO } from "../lib/fin";
 
@@ -63,6 +65,52 @@ function FinDelDia({manana, form, setForm}){
   );
 }
 
+// Hábito 2 · pedidos del día y la salida elegida (hasta PEDIDOS_NOCHE.maximo).
+const vacia = () => ({pedido:"", salida:null});
+function PedidosDelDia({form, setForm}){
+  const lista = form.pedidos?.length ? form.pedidos : [vacia()];
+  const sinSalida = entradasSinSalida(lista);
+  const setLista = (l) => setForm({...form, pedidos:l});
+  const setEntrada = (k, c) => setLista(lista.map((x,j)=>j===k?{...x,...c}:x));
+  const btnLink = { background:"none", border:"none", color:C.celeste, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit", padding:0 };
+  return (
+    <div style={{...card,borderLeft:`4px solid ${C.gold}`}}>
+      <div style={{fontSize:15,color:C.textPrimary,marginBottom:4,lineHeight:1.5,fontWeight:500}}>{PEDIDOS_NOCHE.pregunta}</div>
+      <div style={{fontSize:12,color:C.textMuted,marginBottom:12,fontStyle:"italic"}}>{PEDIDOS_NOCHE.ayuda}</div>
+      <label style={{display:"flex",gap:8,alignItems:"center",fontSize:13,color:C.textSecond,marginBottom:form.sinPedidos?0:12}}>
+        <input type="checkbox" checked={!!form.sinPedidos} onChange={e=>setForm({...form, sinPedidos:e.target.checked})}/>
+        {PEDIDOS_NOCHE.sinPedidos}
+      </label>
+      {!form.sinPedidos && (<>
+        {lista.map((x,k)=>{
+          const falta = sinSalida.includes(k);
+          return (
+            <div key={k} style={{paddingBottom:12,marginBottom:12,borderBottom:`1px solid ${C.border}`}}>
+              <div style={{display:"flex",gap:8,marginBottom:8}}>
+                <input value={x.pedido} onChange={e=>setEntrada(k,{pedido:e.target.value})} placeholder={PEDIDOS_NOCHE.placeholder}
+                  maxLength={140} style={{...inp,fontSize:13}}/>
+                <button onClick={()=>setLista(lista.length>1?lista.filter((_,j)=>j!==k):[vacia()])} style={{...btnLink,color:C.textMuted}} aria-label="Eliminar pedido">✕</button>
+              </div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {SALIDAS.map(s=>{
+                  const activo = x.salida===s.v, col = COLOR_SALIDA[s.v];
+                  return (
+                    <button key={s.v} onClick={()=>setEntrada(k,{salida:activo?null:s.v})} title={s.ayuda}
+                      style={{flex:"1 1 90px",padding:"9px 6px",borderRadius:8,border:"2px solid",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,
+                        background:activo?col.bg:C.surfaceAlt,color:activo?col.fg:C.textMuted,borderColor:activo?col.fg:falta?C.no:C.border}}>{s.t}</button>
+                  );
+                })}
+              </div>
+              {falta && <div style={{fontSize:12,color:C.no,marginTop:6}}>{PEDIDOS_NOCHE.faltaSalida}</div>}
+            </div>
+          );
+        })}
+        {lista.length<PEDIDOS_NOCHE.maximo && <button onClick={()=>setLista([...lista, vacia()])} style={btnLink}>{PEDIDOS_NOCHE.agregar}</button>}
+      </>)}
+    </div>
+  );
+}
+
 const flecha = (activo) => ({
   width:40,height:40,borderRadius:8,border:`1px solid ${C.border}`,background:activo?C.surface:C.surfaceAlt,
   color:activo?C.navy:C.textMuted,fontSize:16,cursor:activo?"pointer":"default",fontFamily:"inherit",flexShrink:0,
@@ -71,7 +119,9 @@ const flecha = (activo) => ({
 export default function Noche({form, setForm, today, registros, manana, onGuardar, savedNoche}){
   // Con fin definido, "¿Viviste tu fin?" reemplaza a Alineación (p4 se deriva al guardar).
   const conFin = finDefinido(manana);
-  const completo = form.p1!==null&&form.p2!==null&&form.p3!==null&&(conFin ? form.finCumplido!==null : form.p4!==null);
+  // Un pedido con texto y sin salida frena el guardado hasta completarlo (se marca en la card).
+  const pedidosIncompletos = !form.sinPedidos && entradasSinSalida(form.pedidos).length>0;
+  const completo = form.p1!==null&&form.p2!==null&&form.p3!==null&&(conFin ? form.finCumplido!==null : form.p4!==null) && !pedidosIncompletos;
   const esHoy = form.fecha===today;
   const bloqueada = !nocheDisponible(form.fecha) && !registros[form.fecha];
   const irA = f => setForm({...form, fecha:f});
@@ -122,6 +172,7 @@ export default function Noche({form, setForm, today, registros, manana, onGuarda
           rows={2} style={{...inp,resize:"none",lineHeight:1.5,fontSize:13}}/>
       </div>
       )}
+      <PedidosDelDia form={form} setForm={setForm}/>
 
       <div style={{fontSize:11,letterSpacing:2,color:C.textMuted,textTransform:"uppercase",marginBottom:10,marginTop:6}}>Cierre del día · opcional</div>
       <div style={card}>
@@ -142,6 +193,7 @@ export default function Noche({form, setForm, today, registros, manana, onGuarda
         style={{width:"100%",padding:14,borderRadius:10,border:"none",background:completo?C.navy:C.surfaceAlt,color:completo?C.white:C.textMuted,fontSize:15,fontFamily:"inherit",fontWeight:600,cursor:"pointer",transition:"all 0.2s"}}>
         {savedNoche?"✓ Guardado y sincronizado":"Guardar registro del día"}
       </button>
+      {pedidosIncompletos && <div style={{fontSize:12,color:C.no,marginTop:8,textAlign:"center"}}>Falta elegir la salida de un pedido (Hábito 2).</div>}
       </>)}
     </div>
   );

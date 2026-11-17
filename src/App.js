@@ -9,6 +9,7 @@ import { ventanaTrimestral, ventanaAnual, ventanaMensual, nombreTrimestre, nombr
 import { HABITOS_SEGUIDOS, cumplimientoHabito } from "./lib/habitos";
 import { fraseDelDia } from "./lib/frases";
 import { semanaPlanDe, esV2, revisionCompleta } from "./lib/semanal";
+import { entradasSinSalida, habito2ParaGuardar } from "./lib/habito2";
 import { CHISPA_DEFAULT, aplicarContenido } from "./content/contenido";
 import {
   KEY_NOCHE, KEY_MANANA, KEY_SEMANA, KEY_TRIMESTRE, KEY_ANUAL,
@@ -58,6 +59,7 @@ export default function App() {
   const [form, setForm] = useState({
     fecha:todayBsAs(), p1:null,p1_nota:"",p2:null,p2_nota:"",p3:null,p3_nota:"",p4:null,p4_nota:"",
     conflicto:null, conflicto_nota:"", compromisoCumplido:null, tareaClaveHecha:null, finCumplido:null,
+    pedidos:[], sinPedidos:false,
   });
   const [savedNoche,  setSavedNoche]  = useState(false);
   const [periodicaSub,   setPeriodicaSub]   = useState("semanal");
@@ -146,10 +148,11 @@ export default function App() {
     if (r) {
       setForm(f => ({...f, p1:r.p1, p1_nota:r.p1_nota??"", p2:r.p2, p2_nota:r.p2_nota??"",
         p3:r.p3, p3_nota:r.p3_nota??"", p4:r.p4??null, p4_nota:r.p4_nota??"",
-        conflicto:r.conflicto??null, conflicto_nota:r.conflicto_nota??"", compromisoCumplido:r.compromisoCumplido??null, tareaClaveHecha:r.tareaClaveHecha??null, finCumplido:r.fin?.cumplido??null}));
+        conflicto:r.conflicto??null, conflicto_nota:r.conflicto_nota??"", compromisoCumplido:r.compromisoCumplido??null, tareaClaveHecha:r.tareaClaveHecha??null, finCumplido:r.fin?.cumplido??null,
+        pedidos:Array.isArray(r.habito2?.pedidos) ? r.habito2.pedidos.map(x=>({pedido:x.pedido||"", salida:x.salida||null})) : [], sinPedidos:!!r.habito2?.sinPedidos}));
     } else {
       setForm(f => ({...f, p1:null,p1_nota:"",p2:null,p2_nota:"",p3:null,p3_nota:"",p4:null,p4_nota:"",
-        conflicto:null, conflicto_nota:"", compromisoCumplido:null, tareaClaveHecha:null, finCumplido:null}));
+        conflicto:null, conflicto_nota:"", compromisoCumplido:null, tareaClaveHecha:null, finCumplido:null, pedidos:[], sinPedidos:false}));
     }
   }, [form.fecha, registros]);
 
@@ -246,6 +249,9 @@ export default function App() {
     const conFin = finDefinido(mananaLog[form.fecha]);
     const p4 = conFin ? (form.finCumplido===null ? null : form.finCumplido==="si") : form.p4;
     if (form.p1===null||form.p2===null||form.p3===null||p4===null) return;
+    // Hábito 2 · pedidos: un pedido con texto y sin salida no se guarda (la Noche lo marca y frena el botón).
+    if (!form.sinPedidos && entradasSinSalida(form.pedidos).length) return;
+    const habito2 = habito2ParaGuardar(form.pedidos, form.sinPedidos);
     const updated = {...registros, [form.fecha]:{
       fecha:form.fecha, p1:form.p1, p1_nota:form.p1_nota,
       p2:form.p2, p2_nota:form.p2_nota, p3:form.p3, p3_nota:form.p3_nota,
@@ -254,6 +260,8 @@ export default function App() {
       compromisoCumplido:form.compromisoCumplido, tareaClaveHecha:conFin ? form.finCumplido : form.tareaClaveHecha,
       // "Mi fin para hoy": solo se escribe si hay fin (o si ya existía, para poder borrarlo).
       ...((conFin || registros[form.fecha]?.fin) ? {fin:{cumplido:conFin ? form.finCumplido : null}} : {}),
+      // Hábito 2 · pedidos: solo se escribe si hay algo cargado (o si ya existía, para poder vaciarlo).
+      ...((habito2 || registros[form.fecha]?.habito2) ? {habito2:habito2 || {pedidos:[], sinPedidos:false}} : {}),
     }};
     if (await persistNoche(updated)) flashGuardado(setSavedNoche);
   };

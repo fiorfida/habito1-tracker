@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { C, card, inp, btnPrimario } from "../theme";
-import { SLabel } from "../components/ui";
+import { SLabel, SalidaChip, COLOR_SALIDA } from "../components/ui";
 import { MatrizDecision } from "../components/Chispa";
-import { MISION, VISION_ALT, ROLES, nombreRol } from "../content/contenido";
+import { MISION, VISION_ALT, ROLES, nombreRol, SALIDAS, SALIDAS_SEMANA } from "../content/contenido";
+import { salidasSemana } from "../lib/habito2";
 import { formatDate, dayOfWeek, todayBsAs, addDays } from "../lib/fechas";
 import { trimestreDe, nombreTrimestre } from "../lib/periodos";
 import { mergeMetas } from "../lib/metas";
@@ -333,12 +334,13 @@ function InsumosRol({rol, semana, planTrim, objetivos}){
 }
 
 // ─── 4. Reflexión semanal ──────────────────────────────────────────────
-function Paso4({rev, setRefl}){
+function Paso4({W, registros, rev, setRev, setRefl}){
   const [nueva, setNueva] = useState("");
   const pre = rev.reflexion.preocupaciones || [];
   const agregar = () => { if(!nueva.trim()) return; setRefl({preocupaciones:[...pre, {id:nuevoId(), texto:nueva.trim(), control:null}]}); setNueva(""); };
   return (
     <>
+      <SalidasDeLaSemana W={W} registros={registros} rev={rev} setRev={setRev}/>
       <div style={card}>
         <SLabel>Círculo de influencia — qué me preocupó esta semana</SLabel>
         {pre.map(p=>(
@@ -366,6 +368,58 @@ function Paso4({rev, setRefl}){
         <input value={rev.reflexion.intencion} onChange={e=>setRefl({intencion:e.target.value})} placeholder="Una línea" style={{...inp,fontSize:13}}/>
       </div>
     </>
+  );
+}
+
+// Hábito 2 · qué salida predominó ante los pedidos de la semana W.
+// La reflexión se guarda en semana/{W}.habito2.reflexionSalidas.
+function SalidasDeLaSemana({W, registros, rev, setRev}){
+  const s = salidasSemana(W, registros);
+  const nombres = s.predominantes.map(v=>SALIDAS.find(x=>x.v===v)?.t).join(", ").replace(/, ([^,]*)$/," y $1");
+  const conCheckin = s.diasConPedidos + s.diasSinPedidos + s.diasSinRegistro;
+  return (
+    <div style={{...card,borderLeft:`4px solid ${C.gold}`}}>
+      <SLabel>{SALIDAS_SEMANA.titulo}</SLabel>
+      {s.total>0 && (<>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+          {s.filas.map(f=>{
+            const top = s.predominantes.includes(f.v), col = COLOR_SALIDA[f.v];
+            return (
+              <div key={f.v} style={{flex:"1 1 0",minWidth:0,borderRadius:8,padding:"10px 8px",background:top?col.bg:C.surfaceAlt,border:`2px solid ${top?col.fg:"transparent"}`}}>
+                <div style={{fontSize:12,color:top?col.fg:C.textMuted,fontWeight:600}}>{f.t}</div>
+                <div style={{fontSize:22,fontWeight:700,color:top?col.fg:C.navy}}>{f.n}</div>
+                <div style={{fontSize:13,fontWeight:600,color:top?col.fg:C.textSecond}}>{f.pct}%</div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{fontSize:14,color:C.textPrimary,marginBottom:10}}>
+          {s.predominantes.length>1 ? "Empate entre " : "Predominó "}<strong style={{color:C.navy}}>{nombres}</strong> ({s.total} {s.total===1?"pedido":"pedidos"}).
+        </div>
+      </>)}
+      <div style={{fontSize:12,color:C.textSecond,marginBottom:10}}>
+        {conCheckin===0 ? "Sin noches registradas esta semana." :
+          `Noches registradas: ${conCheckin} · con pedidos ${s.diasConPedidos} · "sin pedidos relevantes" ${s.diasSinPedidos} · sin registro de pedidos ${s.diasSinRegistro}`}
+      </div>
+      {s.mensaje && <div style={{fontSize:14,fontStyle:"italic",color:C.warn,background:C.warnBg,borderRadius:8,padding:"10px 12px",marginBottom:12}}>{s.mensaje}</div>}
+      {s.total>0 && (
+        <details style={{marginBottom:12}}>
+          <summary style={{fontSize:12,color:C.celeste,cursor:"pointer",fontWeight:600}}>Pedidos de la semana ({s.total})</summary>
+          <div style={{marginTop:8}}>
+            {s.lista.map((p,i)=>(
+              <div key={i} style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",padding:"6px 0",borderBottom:`1px solid ${C.border}`}}>
+                <span style={{fontSize:12,fontWeight:700,color:C.textMuted,minWidth:72}}>{dayOfWeek(p.fecha)} {formatDate(p.fecha).slice(0,5)}</span>
+                <span style={{fontSize:13,color:C.textPrimary,flex:"1 1 140px"}}>{p.pedido}</span>
+                <SalidaChip salida={p.salida} chico/>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+      <div style={{fontSize:13,fontWeight:600,color:C.textPrimary,marginBottom:6}}>{SALIDAS_SEMANA.reflexion}</div>
+      <textarea value={rev.habito2?.reflexionSalidas||""} onChange={e=>setRev(r=>({...r, habito2:{...(r.habito2||{}), reflexionSalidas:e.target.value}}))}
+        placeholder={SALIDAS_SEMANA.reflexionPlaceholder} rows={3} style={{...inp,resize:"vertical",fontSize:13,lineHeight:1.5}}/>
+    </div>
   );
 }
 

@@ -2,6 +2,8 @@ import { C, card, dotColor } from "../theme";
 import { PREGUNTAS_H1, PREGUNTA_H2 } from "../content/contenido";
 import { formatDate, dayOfWeek, NOCHE_DESDE } from "../lib/fechas";
 import { finDefinido, fraseFin } from "../lib/fin";
+import { pedidosDe } from "../lib/habito2";
+import { SalidaChip } from "./ui";
 
 // Un día: Noche (4 preguntas) y Mañana (tarea clave, compromiso, anticipación) con sus resultados.
 export default function DiaCard({d, r, m, today, nocheDisp}){
@@ -56,11 +58,25 @@ const RESULTADO = { si:{t:"Sí",c:C.yes}, parcial:{t:"Parcial",c:C.warn}, no:{t:
 const RESULTADO_FIN = { ...RESULTADO, parcial:{t:"A medias",c:C.warn} };
 function DiaExtra({m, r}){
   const situaciones = (m?.situaciones||[]).filter(s=>s.situacion);
+  const pedidos = pedidosDe(r);
   const filas = [
     m?.misionOk!=null && {k:"Mañana · misión y visión", v:`Misión: ${m.misionOk?"Sí":"No"}${m.misionAjuste?` (${m.misionAjuste})`:""} · Visión: ${m.visionOk==null?"—":m.visionOk?"Sí":"No"}${m.visionAjuste?` (${m.visionAjuste})`:""}`},
     // Días con "Mi fin para hoy": la frase y si lo viví. Días viejos: solo la tarea clave, como antes.
     finDefinido(m) && {k:"🎯 Mi fin para hoy", v:fraseFin(m), res:r?.fin?.cumplido, tabla:RESULTADO_FIN, etiqueta:"¿Lo viví?"},
     // Con fin, la tarea ya está en la frase y su resultado es el mismo ("¿Lo viví?").
+    m?.habito2?.ensayo?.trim() && {k:"🎬 Ensayo mental", v:m.habito2.ensayo.trim()},
+    // Hábito 2 · pedidos del día con su salida (los días viejos no tienen `habito2`: no se muestra nada).
+    pedidos.length>0 && {k:"🔀 Pedidos y salidas", nodo:(
+      <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:2}}>
+        {pedidos.map((p,i)=>(
+          <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start"}}>
+            <SalidaChip salida={p.salida} chico/>
+            <span style={{fontSize:13,color:C.textSecond,minWidth:0}}>{p.pedido}</span>
+          </div>
+        ))}
+      </div>
+    )},
+    r?.habito2?.sinPedidos && {k:"🔀 Pedidos y salidas", v:"Sin pedidos relevantes"},
     !finDefinido(m) && m?.tareaClave?.texto && {k:"★ Tarea clave", v:m.tareaClave.texto, res:r?.tareaClaveHecha},
     m?.compromiso && {k:"Compromiso", v:m.compromiso, res:r?.compromisoCumplido},
     situaciones.length>0 && {k:"Anticipación", v:situaciones.map(s=>`${s.situacion} → ${s.respuesta||"…"}`).join(" · ")},
@@ -71,9 +87,9 @@ function DiaExtra({m, r}){
     <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${C.border}`}}>
       {filas.map(f=>(
         <div key={f.k} style={{display:"flex",justifyContent:"space-between",gap:10,marginBottom:6}}>
-          <div>
+          <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:11,color:C.textMuted,marginBottom:1}}>{f.k}</div>
-            <div style={{fontSize:13,color:C.textSecond}}>{f.v}</div>
+            {f.nodo || <div style={{fontSize:13,color:C.textSecond}}>{f.v}</div>}
           </div>
           {f.res && <span style={{fontSize:11,fontWeight:700,color:(f.tabla||RESULTADO)[f.res].c,flexShrink:0}}>{f.etiqueta?`${f.etiqueta} `:""}{(f.tabla||RESULTADO)[f.res].t}</span>}
         </div>
